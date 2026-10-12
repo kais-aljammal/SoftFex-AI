@@ -1,8 +1,41 @@
 # SoftFex AI
 
-A Windows desktop island that watches a selected source folder, independently reviews real changes, and shows evidence you can inspect and correct. Electron main owns file access, Anthropic requests and Deepgram requests; the sandboxed React renderer receives typed reports and generated audio only.
+**A second look before you ship.**
 
-## Run locally
+An independent review of your Codex changes, right there on your Windows desktop. SoftFex watches your selected project, highlights potential engineering issues with real source evidence, and generates a correction prompt you can send back to Codex. After the correction, review again to see what is still detected or could not be re-verified.
+
+[Visit the website](https://softfex-ai-landing.vercel.app) · [Download Windows beta](https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64.zip) · [Release notes](https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1)
+
+[![SoftFex website: a floating review island highlights a potential average-calculation issue](docs/assets/softfex-website.png)](https://softfex-ai-landing.vercel.app)
+
+*Captured from the live website. The code and island are an illustrative preview, not a screenshot of the running Windows app.*
+
+## Open the app in a few steps
+
+1. **Download the Windows ZIP** using the link above. This beta is for Windows x64.
+2. **Extract everything.** Right-click the downloaded ZIP, choose **Extract All**, and select a folder you can write to. Keep all extracted files together; do not open the app from inside the ZIP or move only the executable.
+3. **Open `SoftFex AI.exe`** in the extracted folder. No installer or `npm install` is needed. Look for the small black island at the top center of your screen and click it to expand.
+4. **Configure your Anthropic key.** Click **Configure Anthropic key** and enter your own API key in the separate masked PowerShell prompt. After it confirms the key was saved, close the prompt and return to SoftFex. Never enter your key into a chat or a source file.
+5. **Choose your project.** Click **Choose project folder**, then open **Review settings** and select **Enable AI review** to consent to sending filtered source and available task context to Anthropic.
+6. **Click Review Now.** Open a finding to inspect the source evidence, use **Open in VS Code**, or **Copy fix prompt** and give it to Codex. After the code changes, click **Review Again**. Reviews cover the displayed source scope, not a guarantee that the whole project is correct.
+
+You need an Anthropic API key with available credits for AI review. Local checks remain available without it. VS Code is needed for source navigation. **Deepgram is optional:** configure its key for Aura 2 voice alerts, or use the system-voice fallback. Use **Test voice** and **Mute** in the expanded island.
+
+Node.js and Python are needed for the optional automatic Codex completion connection below, not simply to open the downloaded app.
+
+## How the review loop works
+
+**Codex builds → SoftFex takes a look → you inspect the evidence → Codex corrects the code → SoftFex reviews again.**
+
+![Website correction preview: the divisor is changed to values.length, ready for re-review](docs/assets/softfex-correction-preview.png)
+
+*The website's example correction, awaiting re-review. A code change alone does not establish that an issue is resolved.*
+
+SoftFex uses one independent Claude Sonnet 5.5 reviewer alongside deterministic local checks. It can miss issues, and it does not run your project's tests or apply fixes itself. Findings, skipped coverage and re-verification uncertainty stay visible.
+
+Electron main owns file access, Anthropic requests and Deepgram requests; the sandboxed React renderer receives typed reports and generated audio only.
+
+## Run from source (developers)
 
 Requires Windows, Node.js 24+, and VS Code for source navigation.
 
@@ -25,10 +58,20 @@ Every AI review evaluates correctness, plus at most two relevant engineering dis
 
 ## Codex completion integration
 
-Start SoftFex, choose the same workspace, and run the wrapper from your VS Code terminal:
+This optional connection reviews changes when a supported Codex CLI task finishes. It requires **Node.js 24+**, **Python 3.11+** and an authenticated **Codex CLI** available on PATH. It does not automatically connect existing Codex desktop conversations.
+
+Start SoftFex and choose your project folder. In a PowerShell terminal, run the command for your installation, replacing `C:\path\to\your\project` with that same selected folder.
+
+**Downloaded Windows app:**
 
 ```powershell
-node C:\path\to\SoftFex-AI\scripts\start-codex.cjs -C C:\path\to\your\project
+node "$env:APPDATA\SoftFex AI\runtime\scripts\start-codex.cjs" -C "C:\path\to\your\project"
+```
+
+**Running from source:**
+
+```powershell
+node "C:\path\to\SoftFex-AI\scripts\start-codex.cjs" -C "C:\path\to\your\project"
 ```
 
 The wrapper inspects the existing Codex `notify` array, preserves it in ignored local runtime storage, and overrides `notify` only for that CLI invocation. The relay chains the existing notification command and posts a reduced, authenticated completion event to SoftFex on loopback. Global Codex settings and Coucou hooks are never rewritten. Existing Codex desktop conversations do not automatically adopt the wrapper. If completion integration is unavailable, use Review Now; filesystem observation still works.
