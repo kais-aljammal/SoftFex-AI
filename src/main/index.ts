@@ -48,9 +48,9 @@ else void app.whenReady().then(() => {
     });
   }
   handle('getState', () => {state.apiKeyPresent=!!readApiKey(projectRoot);state.deepgramKeyPresent=!!readCredential(projectRoot,'DEEPGRAM_API_KEY');return state;});
-  handle('setWindowMode', (mode): Result => {
+  handle('setWindowMode', async (mode): Promise<Result> => {
     if (!['collapsed','changes','reviewing','warning','speaking','report','detail'].includes(mode)) return { ok: false, error: 'Invalid request' };
-    positionNotch(win, mode as WindowMode); return { ok: true, value: undefined };
+    await positionNotch(win, mode as WindowMode); return { ok: true, value: undefined };
   });
   handle('selectWorkspace', async ():Promise<Result> => {
     if(selecting)return {ok:false,error:'Folder selection already open.'};selecting=true;

@@ -11,6 +11,7 @@ try{
  await page.getByRole('button',{name:'Review Now',exact:true}).click();let state=await waitState(page,s=>s.report&&s.phase!=='reviewing');
  assert.equal(state.report.findings.length,1);const id=state.report.findings[0].id;
  await page.getByRole('button',{name:/Potential SQL injection/}).click();await page.getByRole('heading',{name:"What's wrong",exact:true}).waitFor();
+ await page.waitForTimeout(300);await page.screenshot({path:'artifacts/issue-evidence.png'});
  await page.getByRole('button',{name:'Copy fix prompt',exact:true}).click();await page.getByRole('textbox',{name:'Fix prompt',exact:true}).waitFor();
  const prompt=await page.getByRole('textbox',{name:'Fix prompt',exact:true}).inputValue();assert.ok(prompt.includes('src/auth.ts:2-2'));assert.ok(prompt.includes('req.params.id'));
  await page.getByRole('button',{name:'Copy prompt',exact:true}).click();await page.getByRole('button',{name:'Copied',exact:true}).waitFor();

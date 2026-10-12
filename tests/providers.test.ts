@@ -1,5 +1,8 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {reviewAI} from '../src/main/llm';import {generateSpeech} from '../src/main/speech';import {source} from './helpers';
+import {reviewAI,redactSource} from '../src/main/llm';import {generateSpeech} from '../src/main/speech';import {source} from './helpers';
+test('credential redaction covers JSON quoted properties and source assignments',()=>{
+ for(const text of ['{"apiKey":"synthetic-private-value"}','const password = "synthetic-private-value"','{"DEEPGRAM_API_KEY":"synthetic-private-value"}']){assert.ok(!redactSource(text).includes('synthetic-private-value'));assert.ok(redactSource(text).includes('[REDACTED]'));}
+});
 const response=(text:string,stop='end_turn')=>Response.json({id:'synthetic',type:'message',role:'assistant',model:'claude-sonnet-5-5',stop_reason:stop,content:[{type:'text',text}],usage:{input_tokens:1,output_tokens:1}});
 test('AI malformed JSON, refusal and fabricated evidence fail without fabricated findings',async t=>{
  for(const [body,stop] of [['not json','end_turn'],['{"findings":[]}','refusal'],['{"findings":[{"file":"invented.ts"}]}','end_turn']]){

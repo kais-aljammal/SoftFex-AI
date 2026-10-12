@@ -9,10 +9,13 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.getByRole('button', { name: /SoftFex/ }).click();
   await page.getByRole('heading', { name:'Your code. A second look.' }).waitFor();
+  await page.waitForTimeout(300);
+  assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isVisible()),true,'Native window must actually be visible, not only render offscreen.');
   let bounds = await app.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows()[0].getBounds());
   assert.ok(Math.abs(bounds.width-420)<=1); assert.ok(Math.abs(bounds.height-440)<=1);
   await page.screenshot({ path:'artifacts/shell-expanded.png' });
   await page.getByRole('button',{name:'Collapse',exact:true}).click();
+  await page.waitForTimeout(300);
   bounds = await app.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows()[0].getBounds());
   assert.ok(Math.abs(bounds.width-220)<=1); assert.ok(Math.abs(bounds.height-40)<=1);
   const isolation = await page.evaluate(() => ({ node: typeof window.require, bridge: typeof window.softfex.getState }));

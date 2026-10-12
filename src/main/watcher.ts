@@ -3,12 +3,12 @@ import { lstat, realpath, readdir, open } from 'node:fs/promises';
 import { relative, resolve, isAbsolute, extname, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 export const LIMITS = { maxFiles: 12, maxFileChars: 12_000, maxTotalContextChars: 45_000, maxFindings: 12, maxTrackedFiles: 2000, maxBytes: 64_000, maxBaselineChars: 2_000_000 };
-const ignoredDirectories = new Set(['.git','.codex','.agents','.aws','node_modules','.next','dist','build','coverage','.venv','vendor','.softfex-local']);
+const ignoredDirectories = new Set(['.git','.codex','.agents','.aws','node_modules','.next','dist','out','build','release','artifacts','coverage','.venv','vendor','.softfex-local']);
 const supported = new Set(['.ts','.tsx','.js','.jsx','.json']);
 export function canonicalRelative(path: string) { return path.replace(/\\/g,'/'); }
 export function insideRoot(root: string, path: string) { const rel = relative(root,path); return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..\\`) && !rel.startsWith('../')); }
 export function ignoredPath(path: string) {
-  return canonicalRelative(path).split('/').some(segment => ignoredDirectories.has(segment.toLowerCase()) || /^\.env/i.test(segment) || /^(?:id_rsa|credentials\.json|auth\.json)$/i.test(segment) || /\.(?:pem|key)$/i.test(segment));
+  return canonicalRelative(path).split('/').some(segment => ignoredDirectories.has(segment.toLowerCase()) || /^\.env/i.test(segment) || /^(?:id_rsa|credentials[^/]*\.json|secrets[^/]*\.json|auth\.json)$/i.test(segment) || /\.(?:pem|key|p12|pfx)$/i.test(segment));
 }
 export function eligiblePath(path: string) {
   const rel = canonicalRelative(path); const name = basename(rel);

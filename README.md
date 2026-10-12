@@ -51,6 +51,7 @@ node scripts/smoke-reviewer.mjs
 node scripts/smoke-workflow.mjs
 node scripts/smoke-voice.mjs
 node scripts/smoke-completion.mjs
+node scripts/smoke-security.mjs
 npm run secrets:check
 ```
 
@@ -58,6 +59,6 @@ Run Electron smoke scripts sequentially. Reviewer/voice/completion scripts use r
 
 Reviews are bounded to 12 source files, 12,000 characters per file and 45,000 context characters; batches contain at most three files and results at most 12 findings. Supported source types are TS/TSX/JS/JSX/JSON. Secrets, dependencies, generated files and symlink escapes are excluded. No automatic tests or arbitrary project commands run. AI requests have a 30-second request timeout, one retry across transient failures and a 90-second review deadline. Skipped, failed or outdated coverage cannot establish a clean project. Findings remain potential issues, not proof of exploitability or security certification.
 
-This MVP runs from source and has no packaged installer, telemetry, database, accounts or automatic code modification. Native positioning and speech should be checked on the actual demo machine; speaker audibility and additional display scaling need manual confirmation.
+This MVP runs from source and has no packaged installer, telemetry, database, accounts or automatic code modification. On Windows it uses an opaque black frameless window with a rounded native region and tight bounds: transparent compositing failed native input checks on the demo machine. Native folder selection, source observation, mouse interaction and review playback were exercised at the current 119% display scaling. Speaker audibility and other display scaling still need manual confirmation.
 
-Before every push, stage only intended files and run `npm run secrets:check`. Never force-push or commit `.env`, runtime notification descriptors, dependencies or build output.
+Before every push, stage only intended files and run `npm run secrets:check`. The repository's `.githooks/pre-push` runs the same check when `git config core.hooksPath .githooks` is configured locally. Never force-push or commit `.env`, runtime notification descriptors, dependencies or build output.

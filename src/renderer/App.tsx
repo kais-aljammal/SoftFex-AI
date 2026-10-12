@@ -18,10 +18,10 @@ export function App(){
  const compactMode=notification&&!stale&&!busy?'warning':voice.speaking?'speaking':busy?'reviewing':state?.changedFiles?'changes':'collapsed';
  useEffect(()=>{void window.softfex.setWindowMode(expanded?(finding?'detail':'report'):compactMode);},[expanded,!!finding,compactMode]);
  async function act<T,>(operation:Promise<Result<T>>){try{const r=await operation;setError(r.ok?'':r.error);return r;}catch{setError('The operation could not complete. Try again.');return undefined;}}
- async function mode(next:boolean){await act(window.softfex.setWindowMode(next?'report':'collapsed'));setExpanded(next);setSelected(undefined);setShowPrompt(false);}
+ function mode(next:boolean){setExpanded(next);setSelected(undefined);setShowPrompt(false);}
  async function choose(){setSelecting(true);await act(window.softfex.selectWorkspace());setSelecting(false);}
- async function detail(f:Finding){setSelected(f.id);setPrompt('');setShowPrompt(false);setCopied(false);await act(window.softfex.setWindowMode('detail'));}
- async function back(){setSelected(undefined);setShowPrompt(false);await act(window.softfex.setWindowMode('report'));}
+ function detail(f:Finding){setSelected(f.id);setPrompt('');setShowPrompt(false);setCopied(false);}
+ function back(){setSelected(undefined);setShowPrompt(false);}
  async function viewPrompt(){const r=await act(window.softfex.getFixPrompt(selected!));if(r?.ok){setPrompt(r.value);setShowPrompt(true);}}
  async function copy(){const r=await act(window.softfex.copyPrompt(selected!));setCopied(!!r?.ok);}
  const collapsedStatus=!state?.workspace?'Choose workspace':busy?'Reviewing':stale?'Outdated':state?.report?`${state.report.findings.length} findings`:state.changedFiles?`${state.changedFiles} files changed`:'Watching';

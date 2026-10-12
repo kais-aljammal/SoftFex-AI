@@ -18,6 +18,11 @@ test('bridge authenticates, routes only matching workspaces and deduplicates com
     assert.equal((await send(event)).status,204);
     assert.equal((await send(event)).status,204); assert.equal(count,1);
     assert.equal((await send({...event,'turn-id':'two'})).status,204); assert.equal(count,2);
+    const raw=(body:string,extra:Record<string,string>={})=>fetch(`http://127.0.0.1:${bridge.port}/codex-event`,{method:'POST',headers:{authorization:`Bearer ${bridge.token}`,'content-type':'application/json',...extra},body});
+    assert.equal((await raw('{')).status,400);
+    assert.equal((await raw(JSON.stringify({...event,'turn-id':'browser'}),{origin:'https://untrusted.invalid'})).status,404);
+    try{assert.equal((await raw(JSON.stringify({...event,'turn-id':'oversized',extra:'x'.repeat(9000)}))).status,413);}catch(error){assert.ok(error instanceof TypeError&&error.message==='fetch failed');}
+    assert.equal(count,2,'Malformed, browser-origin and oversized events must never trigger review.');
   } finally { await bridge.close(); await rm(directory,{recursive:true,force:true}); }
 });
 test('relay exits cleanly when app descriptor is missing', () => {

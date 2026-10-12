@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {WorkspaceWatcher,eligiblePath,insideRoot,readSource} from '../src/main/watcher';
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 test('eligibility excludes secrets, generated files, locks and traversal',()=>{
-  for(const p of ['.env','.env.local','src/.env.test','node_modules/a.ts','dist/a.js','.git/a.json','.codex/auth.json','a.pem','id_rsa','package-lock.json','pnpm-lock.yaml','yarn.lock','a.min.js','a.generated.ts','a.d.ts','../a.ts','C:\\outside.ts','a.ts:stream'])assert.equal(eligiblePath(p),false,p);
+  for(const p of ['.env','.env.local','src/.env.test','node_modules/a.ts','dist/a.js','out/a.js','secrets.json','credentials-local.json','.git/a.json','.codex/auth.json','a.pem','id_rsa','package-lock.json','pnpm-lock.yaml','yarn.lock','a.min.js','a.generated.ts','a.d.ts','../a.ts','C:\\outside.ts','a.ts:stream'])assert.equal(eligiblePath(p),false,p);
   for(const p of ['src/auth.ts','src/a.tsx','src/a.jsx','src/a.js','src/config.json'])assert.equal(eligiblePath(p),true,p);
   assert.equal(insideRoot(join(tmpdir(),'root'),join(tmpdir(),'root-other','a.ts')),false);
 });
