@@ -20,11 +20,13 @@ export async function captureSnapshot(watcher:WorkspaceWatcher, signal?:AbortSig
     const mode=watcher.pending.size?'changed':'current_snapshot';
     const paths=mode==='changed'?[...watcher.pending]:await watcher.listFiles();
     const candidates:SourceFile[]=[];const skippedFiles:string[]=[];
-    for(const file of paths){const read=await readSource(watcher.root,file);if(read.ok)candidates.push(read.source);else skippedFiles.push(`${file} (${read.reason})`);}
+    const reasons={missing:'removed or missing',excluded:'excluded for privacy or unsupported type',oversized:'exceeds 64 KB limit',unreadable:'could not read',unstable:'changed while reading'};
+    for(const file of paths){const read=await readSource(watcher.root,file);if(read.ok)candidates.push(read.source);else skippedFiles.push(`${file} (${reasons[read.reason]})`);}
     candidates.sort((a,b)=>a.content.length-b.content.length||a.file.localeCompare(b.file));
     const files:SnapshotFile[]=[];let total=0;
     for(const source of candidates){
-      if(files.length>=LIMITS.maxFiles||source.content.length>LIMITS.maxFileChars){skippedFiles.push(source.file);continue;}
+      if(source.content.length>LIMITS.maxFileChars){skippedFiles.push(`${source.file} (exceeds 12,000-character file limit)`);continue;}
+      if(files.length>=LIMITS.maxFiles){skippedFiles.push(`${source.file} (12-file review limit)`);continue;}
       const previous=watcher.baseline.get(source.file);
       const changed=mode==='current_snapshot'?{start:1,end:source.content.split(/\r?\n/).length}:changedRange(previous?.content||undefined,source.content);
       const lines=source.content.split(/\r?\n/);const coveredLines=new Set<number>();
@@ -32,7 +34,7 @@ export async function captureSnapshot(watcher:WorkspaceWatcher, signal?:AbortSig
       for(let line=start;line<=end;line++)coveredLines.add(line);
       for(let line=1;line<=Math.min(6,lines.length);line++)if(/^(?:import|export .* from|const .*require\()/.test(lines[line-1]))coveredLines.add(line);
       const context=[...coveredLines].sort((a,b)=>a-b).map(line=>`${line}: ${lines[line-1]}`).join('\n');
-      if(total+context.length>LIMITS.maxTotalContextChars){skippedFiles.push(source.file);continue;}
+      if(total+context.length>LIMITS.maxTotalContextChars){skippedFiles.push(`${source.file} (review context limit)`);continue;}
       total+=context.length;files.push({...source,changedStart:changed.start,changedEnd:changed.end,context,coveredLines});
     }
     let stable=watcher.revision===revision;

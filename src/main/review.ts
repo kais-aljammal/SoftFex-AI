@@ -9,19 +9,29 @@ import {gatherReviewContext,type ReviewContextFile} from './review-context';
 type Trigger=ReviewReport['trigger'];
 export class ReviewCoordinator {
   private busy=false;private queued?:{trigger:Trigger;taskContext?:string};private closed=false;private controller?:AbortController;
+  private latestTaskContext?:string;
   constructor(private watcher:WorkspaceWatcher,private state:AppState,private publish:()=>void,private key:()=>string|undefined,private sanitize:(text:string)=>string=redactSource){}
   get active(){return this.busy;}
   cancelAI(){this.controller?.abort();}
-  close(){this.closed=true;this.queued=undefined;this.controller?.abort();}
+  close(){this.closed=true;this.queued=undefined;this.latestTaskContext=undefined;this.controller?.abort();}
   async request(trigger:Trigger,taskContext?:string){
     if(this.closed)return;
+    if(trigger==='codex_turn_complete'&&taskContext)this.latestTaskContext=this.sanitize(taskContext.slice(0,1600)).slice(0,1600);
+    taskContext=this.latestTaskContext;
     if(this.busy){this.queued={trigger,taskContext:taskContext?.slice(0,1600)};return;}
-    if(trigger==='codex_turn_complete'&&this.watcher.pending.size===0)return;
     this.busy=true;this.controller=new AbortController();
     const startedAt=Date.now();const previous=this.state.report;
     this.state.phase='reviewing';this.state.error=undefined;this.publish();
     let deadline:ReturnType<typeof setTimeout>|undefined;
     try{
+      if(trigger==='codex_turn_complete'){
+        await this.watcher.reconcile(this.controller.signal);
+        if(this.closed)return;
+        if(!this.watcher.pending.size){
+          this.state.phase=previous?(previous.status==='outdated'?'report_outdated':previous.status==='partial'?'report_partial':'report_ready'):'watching';
+          this.publish();return;
+        }
+      }
       const snapshot=await captureSnapshot(this.watcher,this.controller.signal);
       if(this.closed)return;
       const prior=[...(previous?.findings??[]),...(previous?.previousFindings??[]).map(p=>p.finding)];
@@ -41,6 +51,8 @@ export class ReviewCoordinator {
       }
       if(this.closed)return;
       if(!snapshot.files.length)note='No eligible source files were reviewed. Removed or skipped files are not re-verified.';
+      if(snapshot.skippedFiles.length)note=[note,snapshot.mode==='current_snapshot'?'Snapshot limited to eligible source within review limits. Review Again may select the same files; choose a smaller project folder for omitted source.':'Only reviewed changes are checkpointed. Review Again prioritizes remaining pending changes. Oversized or unreadable files remain skipped.'].filter(Boolean).join(' ');
+      if(snapshot.overflow)note=[note,'File discovery reached its safety limit or encountered a watcher error; project coverage is incomplete.'].filter(Boolean).join(' ');
       let outdated=this.watcher.revision!==snapshot.revision;
       for(const file of [...snapshot.files,...relatedFiles]){const now=await readSource(this.watcher.root,file.file);if(!now.ok||now.source.hash!==file.hash)outdated=true;}
       const findings=dedupeFindings([...local,...aiFindings]);

@@ -5,6 +5,46 @@ const unsafe='db.query(`SELECT * FROM users WHERE id = ${req.params.id}`);',safe
 async function until(predicate:()=>boolean){for(let i=0;i<120;i++){if(predicate())return;await new Promise(r=>setTimeout(r,50));}throw new Error('Condition timed out');}
 const initial=():AppState=>({phase:'watching',changedFiles:0,revision:0,muted:false,aiEnabled:false,apiKeyPresent:false,apiConnectivity:'unchecked',integration:'manual'});
 const ok=()=>Response.json({stop_reason:'end_turn',content:[{type:'text',text:'{"findings":[]}'}]});
+test('completion before the watcher event reconciles actual source and duplicate completions do not review twice',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'softfex-early-completion-'));let watcher:WorkspaceWatcher|undefined;let reviewer:ReviewCoordinator|undefined;
+ try{
+  await writeFile(join(root,'auth.ts'),safe);watcher=await WorkspaceWatcher.create(root,()=>{});
+  // Hold back native events deterministically; completion must discover the disk write itself.
+  t.mock.method(watcher,'onFile',async()=>{});
+  await writeFile(join(root,'auth.ts'),unsafe);assert.equal(watcher.pending.size,0);
+  const state=initial();let reports=0;let lastId:string|undefined;
+  reviewer=new ReviewCoordinator(watcher,state,()=>{if(state.report&&state.report.reviewId!==lastId){lastId=state.report.reviewId;reports++;}},()=>undefined);
+  await Promise.all([reviewer.request('codex_turn_complete'),reviewer.request('codex_turn_complete')]);
+  await until(()=>!reviewer!.active);
+  assert.equal(state.report?.trigger,'codex_turn_complete');assert.equal(state.report?.mode,'changed');
+  assert.equal(state.report?.findings.length,1);assert.equal(reports,1);assert.equal(watcher.pending.size,0);
+ }finally{reviewer?.close();await watcher?.close();await rm(root,{recursive:true,force:true});}
+});
+test('manual re-review reuses bounded sanitized task context only with consent and a new workspace clears it',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'softfex-task-memory-'));let watcher:WorkspaceWatcher|undefined;let reviewer:ReviewCoordinator|undefined;
+ try{
+  await writeFile(join(root,'auth.ts'),safe);watcher=await WorkspaceWatcher.create(root,()=>{});
+  const state=initial();const tasks:(string|undefined)[]=[];
+  t.mock.method(globalThis,'fetch',async(_url:unknown,options?:RequestInit)=>{const body=JSON.parse(String(options?.body));tasks.push(JSON.parse(body.messages[0].content).taskContext);return ok();});
+  reviewer=new ReviewCoordinator(watcher,state,()=>{},()=> 'synthetic-key',text=>text.replaceAll('private-token','[REDACTED]'));
+  await reviewer.request('codex_turn_complete','Supporting private-token '+ 'x'.repeat(2000));
+  await reviewer.request('manual');assert.equal(tasks.length,0,'No consent means no provider calls.');
+  state.aiEnabled=true;await reviewer.request('manual');
+  assert.ok(tasks[0]?.startsWith('Supporting [REDACTED]'));assert.ok(tasks[0]!.length<=1600);assert.ok(!tasks[0]?.includes('private-token'));
+  reviewer.close();reviewer=new ReviewCoordinator(watcher,state,()=>{},()=> 'synthetic-key');
+  await reviewer.request('manual');assert.equal(tasks[1],undefined);
+ }finally{reviewer?.close();await watcher?.close();await rm(root,{recursive:true,force:true});}
+});
+test('closing during completion settling cancels without publishing a review',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'softfex-settle-cancel-'));let watcher:WorkspaceWatcher|undefined;let reviewer:ReviewCoordinator|undefined;
+ try{
+  await writeFile(join(root,'auth.ts'),safe);watcher=await WorkspaceWatcher.create(root,()=>{});const state=initial();
+  reviewer=new ReviewCoordinator(watcher,state,()=>{},()=>undefined);
+  const request=reviewer.request('codex_turn_complete');reviewer.close();await request;
+  assert.equal(state.report,undefined);assert.equal(reviewer.active,false);
+  await assert.rejects(watcher.listFiles(undefined,Date.now()-1),/reconciliation timed out/);
+ }finally{reviewer?.close();await watcher?.close();await rm(root,{recursive:true,force:true});}
+});
 test('failed AI re-review preserves prior uncertainty and does not checkpoint corrected source',async t=>{
  const root=await mkdtemp(join(tmpdir(),'softfex-failure-'));let watcher:WorkspaceWatcher|undefined;let reviewer:ReviewCoordinator|undefined;
  try{

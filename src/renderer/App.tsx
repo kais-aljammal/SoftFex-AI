@@ -56,7 +56,7 @@ export function App(){
  const waveform=<span className="waveform" aria-label="Voice playback active">{voice.levels.map((height,index)=><i key={index} style={{height}}/>)}</span>;
  const issueState=stale?'state-stale':state?.phase==='review_failed'?'state-failed':importantFinding?'state-warning':'';
  const duration=report?.finishedAt?Math.max(0,(report.finishedAt-report.startedAt)/1000):undefined;
- const coverage=report?`${quantity(report.reviewedFiles.length,'file')} reviewed${report.changedFiles>report.reviewedFiles.length?` of ${report.changedFiles}`:''}`:'';
+ const coverage=report?`${report.reviewedFiles.length}/${report.changedFiles} reviewed · ${report.skippedFiles.length} skipped`:'';
  const integration=state?.integration==='connected'?'Codex completion received':state?.integration==='listening'?'Waiting for Codex completion':'Manual review available';
 
  if(!expanded&&compactMode==='warning'&&importantFinding)return <button className={`island-notification ${importantFinding.severity}`} onClick={()=>mode(true)} aria-label="Open SoftFex warning">
@@ -105,7 +105,7 @@ export function App(){
     <div className={`status ${busy?'reviewing':''} ${issueState}`} aria-live="polite">{busy?<LoaderCircle size={13} className="spinner"/>:<i className="dot"/>}{labels[state.phase]}{state.changedFiles>0&&report&&<span className="pending-count">{quantity(state.changedFiles,'change')}</span>}</div>
     {!report?<div className="watching-summary"><h1>{quantity(state.changedFiles,'source file')} changed</h1><p>{busy?'Inspecting the latest source…':state.changedFiles?'Ready for a second look.':'Source changes will appear here.'}</p></div>:<>
      <div className="report-summary"><h1>{quantity(report.findings.length,'finding')}</h1><span>{coverage}{duration!==undefined?` · ${duration<10?duration.toFixed(1):Math.round(duration)}s`:''}</span></div>
-     {report.mode==='current_snapshot'&&<small className="snapshot-label">Current source snapshot</small>}
+     <small className="snapshot-label">{report.mode==='current_snapshot'?'Current project snapshot · eligible source only':'Pending changes · reviewed source only'}</small>
      {stale&&<div className="warning"><AlertTriangle size={14}/>Code changed since this review. Review again.</div>}
      {report.status==='partial'&&<div className="warning"><AlertTriangle size={14}/>Limited coverage. Some source was not reviewed.</div>}
      <div className="findings-list">{report.findings.map(item=><button className="finding" onClick={()=>detail(item)} key={item.id}>
@@ -113,10 +113,10 @@ export function App(){
       <b>{item.title}</b><small>{item.file}:{item.startLine}</small><p>{item.explanation}</p>
      </button>)}</div>
      {!report.findings.length&&<div className="zero"><ShieldCheck size={24}/><div><strong>{report.reviewedFiles.length?'No findings in reviewed source':'No source reviewed'}</strong><p>{report.reviewedFiles.length?'This review does not establish that the project is issue-free.':'No eligible source files were included.'}</p></div></div>}
-     <small className={`coverage ${report.aiStatus==='failed'?'coverage-limited':''}`}>{report.aiStatus==='completed'?'Sonnet 5.5 + local checks':report.aiStatus==='failed'?'AI unavailable · local checks only':report.aiStatus==='not_configured'?'Local checks · add an API key for AI review':'Local checks · AI review off'}</small>
+     <small className={`coverage ${report.aiStatus==='failed'?'coverage-limited':''}`}>{report.aiStatus==='completed'?'Sonnet 5.5 + local checks':report.aiStatus==='failed'?'AI incomplete · local checks available':report.aiStatus==='not_configured'?'Local checks · add an API key for AI review':'Local checks · AI review off'}</small>
      {report.note&&<p className="note">{report.note}</p>}
      {report.previousFindings.map(previous=><div className={`lifecycle ${previous.status==='resolved_in_latest_snapshot'?'resolved':''}`} key={previous.finding.id}>
-      <span>{previous.status==='resolved_in_latest_snapshot'?<Check size={13}/>:<AlertTriangle size={13}/>}</span><div><b>{previous.status==='resolved_in_latest_snapshot'?'No longer detected in reviewed source':'Not re-verified'}</b><small>{previous.finding.title} · {previous.finding.file}</small></div>
+      <span>{previous.status==='resolved_in_latest_snapshot'?<Check size={13}/>:<AlertTriangle size={13}/>}</span><div><b>{previous.status==='resolved_in_latest_snapshot'?'Issue no longer detected in reviewed code':'Not re-verified'}</b><small>{previous.finding.title} · {previous.finding.file}</small></div>
      </div>)}
      {report.skippedFiles.length>0&&<details className="skipped"><summary>{quantity(report.skippedFiles.length,'file')} skipped<ChevronDown size={12}/></summary>{report.skippedFiles.slice(0,5).map(file=><small key={file}>{file}</small>)}{report.skippedFiles.length>5&&<small>…and {report.skippedFiles.length-5} more</small>}</details>}
     </>}
@@ -125,6 +125,7 @@ export function App(){
      <div className="settings-content">
       <label className="consent"><input type="checkbox" checked={state.aiEnabled} onChange={event=>act(window.softfex.setAiReviewEnabled(event.target.checked))}/><span><strong>Enable AI review</strong><small>Send filtered source and available task context to Anthropic.</small></span></label>
       <small className="privacy-note">{state.apiKeyPresent?'API key stored locally.':'API key not configured.'} Secret filtering is best-effort.</small>
+      <small className="privacy-note">Latest Codex task is supporting context, not proof of completion. Kept in memory until you change projects.</small>
       <div className="workspace-row"><button className="text-button" onClick={choose} disabled={selecting}><FolderOpen size={13}/>Change project</button><span title={state.workspace}>{project}</span></div>
       <div className="voice-row"><button className="text-button" onClick={voice.testVoice} disabled={state.muted}><Volume2 size={13}/>Test voice</button><small>{state.muted?'Muted':state.deepgramKeyPresent?'Deepgram Aura 2':'System voice'}</small></div>
       <div className="integration-detail"><span className="dot"/><span>{integration}</span></div>

@@ -66,12 +66,15 @@ export class WorkspaceWatcher {
       return instance;
     } catch(error) {await instance.close();throw error;}
   }
-  async listFiles():Promise<string[]> {
+  async listFiles(signal?:AbortSignal,deadline=Infinity):Promise<string[]> {
     const files:string[]=[]; let visited=0;
+    const check=()=>{if(signal?.aborted||this.closed)throw new Error('Review canceled.');if(Date.now()>deadline)throw new Error('Changes still arriving — reconciliation timed out. Try again.');};
     const visit = async (directory:string):Promise<void> => {
+      check();
       if (++visited>5000 || files.length>=LIMITS.maxTrackedFiles) {this.overflow=true;return;}
       const entries=await readdir(directory,{withFileTypes:true}); entries.sort((a,b)=>a.name.localeCompare(b.name));
       for(const entry of entries){
+        check();
         const path=resolve(directory,entry.name); const rel=canonicalRelative(relative(this.root,path));
         if(ignoredPath(rel)||entry.isSymbolicLink())continue;
         if(entry.isDirectory())await visit(path);
@@ -88,6 +91,21 @@ export class WorkspaceWatcher {
   async onFile(path:string){
     if(this.closed)return;
     const file=canonicalRelative(relative(this.root,path));if(!eligiblePath(file)||!insideRoot(this.root,path))return;
+    await this.reconcileFile(file);
+  }
+  // Independent of event delivery: notification can precede chokidar's stable-write event.
+  async reconcile(signal:AbortSignal){
+    const started=Date.now();
+    await new Promise(r=>setTimeout(r,150));
+    if(signal.aborted||this.closed)throw new Error('Review canceled.');
+    const files=new Set([...this.baseline.keys(),...await this.listFiles(signal,started+2000)]);
+    for(const file of files){
+      if(signal.aborted||this.closed)throw new Error('Review canceled.');
+      if(Date.now()-started>2000)throw new Error('Changes still arriving — reconciliation timed out. Try again.');
+      await this.reconcileFile(file);
+    }
+  }
+  private async reconcileFile(file:string){
     const read=await readSource(this.root,file);if(this.closed)return;
     const before=this.pending.has(file);
     const same=read.ok?this.baseline.get(file)?.hash===read.source.hash:read.reason==='missing'&&!this.baseline.has(file);
