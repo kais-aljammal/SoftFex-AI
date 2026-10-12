@@ -39,6 +39,8 @@ Download the Windows x64 beta ZIP, extract **all** files to a writable local fol
 
 `SoftFex-AI-0.1.0-windows-x64.zip` is 168,215,229 bytes. SHA-256: `1F0C1B503BA93FE1CE70B8816BA14A2113CF0484A06D227D984474527B1F55A4`.
 
+Beta 1 opens the finding file and line. The subsequent source navigation fix also opens the selected project as the VS Code workspace; it is tested from source with paths containing spaces and is not included in this frozen ZIP. Sidebar expansion and the protocol fallback's workspace behavior remain manual limitations.
+
 Open SoftFex, choose Configure Anthropic key, and enter the key in the separate masked Windows PowerShell prompt. Configure Deepgram voice is optional; browser/Windows speech is the fallback. Keys never pass through the renderer or command-line arguments. They are stored in `%APPDATA%\SoftFex AI\credentials.env` with inheritance disabled and access restricted to the current Windows user. This is a private local file, not an encrypted vault. The development `.env` remains unchanged and is excluded from the package. Close setup and return to SoftFex; key presence refreshes automatically. Enable AI review separately to consent to sending filtered source/context.
 
 After starting the packaged app and selecting your project, launch the supported Codex session from a terminal:

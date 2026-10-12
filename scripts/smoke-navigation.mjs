@@ -1,0 +1,12 @@
+import {_electron as electron} from 'playwright';import electronPath from 'electron';import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';import {waitState} from './test-helpers.mjs';
+const root=await mkdtemp(join(tmpdir(),'softfex navigation with spaces '));await mkdir(join(root,'src'));await writeFile(join(root,'src/auth.ts'),await readFile('tests/fixtures/vulnerable-auth.ts'));
+let app;
+try{
+ app=await electron.launch({executablePath:electronPath,args:['.']});const page=await app.firstWindow();await page.getByRole('button',{name:/Open SoftFex/}).click();
+ await app.evaluate(({dialog},root)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[root]});},root);await page.getByRole('button',{name:'Choose project folder',exact:true}).click();await waitState(page,s=>s.workspace===root);
+ await page.evaluate(()=>window.softfex.setMute(true));await page.evaluate(()=>window.softfex.reviewNow());const state=await waitState(page,s=>!!s.report?.findings.length);const finding=state.report.findings[0];
+ await app.evaluate(()=>{const cp=process.getBuiltinModule('node:child_process'),original=cp.spawn;cp.spawn=function(exe,args,options){if(exe.endsWith('Code.exe'))globalThis.__navigation={args,shell:options.shell,keysRemoved:options.env.ANTHROPIC_API_KEY===undefined&&options.env.DEEPGRAM_API_KEY===undefined};return original.call(this,exe,args,options);};});
+ assert.equal((await page.evaluate(id=>window.softfex.openFinding(id),finding.id)).ok,true);const observed=await app.evaluate(()=>globalThis.__navigation);assert.deepEqual(observed.args,['--new-window',root,'--goto',join(root,finding.file)+':'+finding.startLine+':1']);assert.equal(observed.shell,false);assert.equal(observed.keysRemoved,true);
+ await mkdir('artifacts',{recursive:true});await writeFile('artifacts/navigation.json',JSON.stringify({result:'PASS',environment:'source Electron',workspace:root,file:finding.file,line:finding.startLine,actualNativeLaunch:observed,limitations:'Sidebar expansion and visible cursor placement not automatically inspected; protocol fallback retains file navigation only.'},null,2));console.log('PASS: real source IPC validates finding and launches VS Code with selected workspace, exact file/line, paths with spaces and stripped credentials. Visual sidebar placement remains manual.');
+}finally{await app?.close();await rm(root,{recursive:true,force:true});}
