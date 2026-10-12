@@ -4,7 +4,7 @@
 
 A small Windows desktop island that independently reviews your Codex changes with Claude. Inspect potential issues, copy a correction prompt, and review the fix.
 
-[Website](https://softfex-ai-landing.vercel.app) · [Download Windows beta](https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64.zip) · [Release notes](https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1)
+[Website](https://softfex-ai-landing.vercel.app) · [Download Windows beta](https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64-with-code.zip) · [Release notes](https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1)
 
 [![SoftFex website and illustrative review island](docs/assets/softfex-website.png)](https://softfex-ai-landing.vercel.app)
 
@@ -19,6 +19,8 @@ A small Windows desktop island that independently reviews your Codex changes wit
 5. **Choose project folder** → **Review settings** → **Enable AI review** → **Review Now**.
 
 Bring your own Anthropic API key with credits. No installer, Node.js or Python is needed just to open the app. Voice is optional: configure Deepgram or use system voice. VS Code is needed for **Open in VS Code**.
+
+The ZIP includes the application and a `Code/` folder with the complete tracked repository source. Source credentials, private runtime data, Git history and installed development dependencies are excluded. Keep all application companion files together. Recreate the bundle with `npm run package:bundle` and the original verified beta ZIP in `release/`.
 
 ## Review, fix, repeat
 

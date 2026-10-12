@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fafbfe">
+  <meta name="description" content="SoftFex is an independent second look at your Codex changes. Download the Windows beta and bring source-based code review to your desktop.">
+  <title>SoftFex AI — A second look before you ship.</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav wrap">
+    <a class="brand" href="#" aria-label="SoftFex home"><svg viewBox="0 0 24 26" fill="none" aria-hidden="true"><path d="M12 2 21 6v7c0 5-4 9-9 11C7 22 3 18 3 13V6l9-4Z" stroke="currentColor" stroke-width="1.8"/><path d="m8 13 3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>SoftFex<span class="brand-ai"> AI</span></span></a>
+    <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="https://github.com/kais-aljammal/SoftFex-AI" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <section class="hero wrap" aria-labelledby="headline">
+      <span class="availability"><span></span>Meet the Windows beta</span>
+      <h1 id="headline">Let AI build.<br>Keep a second opinion.</h1>
+      <p class="intro">An independent review of your Codex changes.<br class="desktop-break"> Right there on your desktop.</p>
+      <a class="download" href="https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64-with-code.zip"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Download for Windows</a>
+      <p class="download-note">Windows x64 · Beta 1 · App + source code · 161 MB ZIP</p>
+      <p class="key-note">Bring your own Anthropic API key. <a id="setup-link" href="#get-started">Setup</a></p>
+
+      <div class="preview" aria-label="Interactive illustration of the SoftFex review loop">
+        <div class="desktop-preview">
+          <div class="island" id="island" data-state="finding">
+            <div class="island-top"><svg class="shield" viewBox="0 0 24 26" fill="none" aria-hidden="true"><path d="M12 2 21 6v7c0 5-4 9-9 11C7 22 3 18 3 13V6l9-4Z" stroke="currentColor" stroke-width="1.8"/><path d="m8 13 3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><strong>SoftFex</strong><span class="island-status" id="island-status"><i></i>Potential issue</span></div>
+            <div class="island-body" aria-live="polite"><span class="finding-label" id="finding-label">Correctness · example finding</span><h2 id="finding-title">Your average is a little off.</h2><p id="finding-description">Dividing by one fewer item returns the wrong result.</p><span class="file-reference">src/numbers.ts:3</span></div>
+          </div>
+          <div class="code-window" aria-label="Illustrative code example">
+            <div class="code-toolbar"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>numbers.ts</span><span class="code-language">TypeScript</span></div>
+            <div class="code-lines"><div><span class="line-number">1</span><code><span class="syntax-key">function</span> average(values) {</code></div><div><span class="line-number">2</span><code>  <span class="syntax-key">const</span> total = sum(values);</code></div><div class="highlight" id="highlight"><span class="line-number">3</span><code>  <span class="syntax-key">return</span> total / <span id="denominator">(values.length - 1)</span>;</code></div><div><span class="line-number">4</span><code>}</code></div></div>
+            <div class="code-footer"><span class="branch-icon" aria-hidden="true">⑂</span><span>codex/task</span><span id="code-state">Changes ready for review</span></div>
+          </div>
+        </div>
+        <div class="preview-caption"><span>Interactive preview · example code</span><button id="preview-action" type="button">See the correction <span aria-hidden="true">↗</span></button></div>
+      </div>
+    </section>
+
+    <section class="workflow wrap" id="how-it-works" aria-label="How SoftFex works">
+      <article><span class="step">1</span><h2>Codex builds.</h2><p>Finish a task in a connected Codex CLI session.</p></article>
+      <article><span class="step">2</span><h2>SoftFex takes a look.</h2><p>Inspect potential issues, with real source evidence.</p></article>
+      <article><span class="step">3</span><h2>Fix. Then re-check.</h2><p>Send the correction prompt to Codex and review again.</p></article>
+    </section>
+
+    <section class="setup wrap" id="get-started" aria-label="Beta setup information">
+      <details id="setup-details"><summary><span>Getting started.</span><span class="expand-icon" aria-hidden="true">+</span></summary><div class="setup-content"><ol><li>Extract <strong>all</strong> ZIP contents, then open <strong>SoftFex AI.exe</strong>.</li><li>Configure your Anthropic key through the masked local prompt. Choose your project and enable AI review.</li><li>Use <strong>Review Now</strong>, or connect the Codex CLI for automatic reviews.</li></ol><p>Automatic Codex reviews require Node.js 24+, Python 3.11+ and an authenticated Codex CLI. <a href="https://github.com/kais-aljammal/SoftFex-AI#codex-completion-integration" target="_blank" rel="noopener noreferrer">Connection instructions ↗</a></p><p>Deepgram voice is optional; system voice is available. This unsigned Windows beta may show a security warning. Reviews have limited coverage and can miss issues. macOS is not available in this release.</p></div></details>
+    </section>
+  </main>
+  <footer class="wrap"><span>SoftFex AI</span><p>A second look before you ship.</p><a href="https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1" target="_blank" rel="noopener noreferrer">Release notes <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>
