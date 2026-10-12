@@ -1,0 +1,40 @@
+{
+  "name": "softfex-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Independent evidence-based review of changed source files",
+  "main": "dist/main/index.cjs",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "npm run check && node scripts/build.mjs",
+    "start": "electron .",
+    "dev": "npm run build && electron .",
+    "test": "tsx --test tests/*.test.ts",
+    "secrets:check": "node scripts/check-staged-secrets.mjs",
+    "api:check": "electron . --api-check",
+    "voice:check": "electron . --voice-check",
+    "setup:key": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-key.ps1",
+    "setup:voice": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-key.ps1 -Provider Deepgram"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "chokidar": "5.0.0",
+    "lucide-react": "1.55.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "44.7.0",
+    "esbuild": "0.28.2",
+    "playwright": "1.64.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  }
+}

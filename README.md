@@ -1,0 +1,63 @@
+# SoftFex AI
+
+A Windows desktop island that watches a selected source folder, independently reviews real changes, and shows evidence you can inspect and correct. Electron main owns file access, Anthropic requests and Deepgram requests; the sandboxed React renderer receives typed reports and generated audio only.
+
+## Run locally
+
+Requires Windows, Node.js 24+, and VS Code for source navigation.
+
+```powershell
+npm ci
+npm run setup:key
+npm run setup:voice
+npm run build
+npm test
+npm start
+```
+
+The setup commands open masked terminal prompts and preserve other settings in the ignored local `.env`. `.env.example` contains blank variable names only. Never paste keys into chat. The app reads credentials only in main. Choose a project folder, then explicitly enable AI review if you want filtered source snippets sent to Anthropic. Local checks work without AI. Secret filtering is best-effort.
+
+The sole review model is Claude Sonnet 5.5 (`claude-sonnet-5-5`), using the official Anthropic SDK with structured JSON and Zod/source-evidence validation. Voice uses Deepgram Aura 2 (`aura-2-thalia-en`), with browser/Windows speech fallback. Mute and Test voice are in the expanded island.
+
+`npm run api:check` and `npm run voice:check` make minimal live connectivity requests; the latter verifies audio generation, not speaker audibility.
+
+## Codex completion integration
+
+Start SoftFex, choose the same workspace, and run the wrapper from your VS Code terminal:
+
+```powershell
+node C:\path\to\SoftFex-AI\scripts\start-codex.cjs -C C:\path\to\your\project
+```
+
+The wrapper inspects the existing Codex `notify` array, preserves it in ignored local runtime storage, and overrides `notify` only for that CLI invocation. The relay chains the existing notification command and posts a reduced, authenticated completion event to SoftFex on loopback. Global Codex settings and Coucou hooks are never rewritten. Existing Codex desktop conversations do not automatically adopt the wrapper. If completion integration is unavailable, use Review Now; filesystem observation still works.
+
+## Three-minute demo
+
+1. Run `node scripts/demo-fixture.mjs safe`, start SoftFex, and choose the printed demo folder. Enable AI review and click Test voice.
+2. Run `node scripts/demo-fixture.mjs unsafe`, or ask the wrapped Codex CLI to make that controlled fixture change. The pending counter updates; a CLI completion triggers review, or click Review Now.
+3. Open the potential SQL-injection finding, inspect its source evidence, open the exact line in VS Code, and copy the fix prompt. SoftFex never edits code or runs the fix itself.
+4. Have Codex apply the correction, or honestly demonstrate the prepared correction with `node scripts/demo-fixture.mjs safe`. Review Again shows whether this specific finding is no longer detected.
+
+Do not edit report data or present the controlled example as a real database/server. API failures preserve local checks and explicit incomplete coverage; voice failures preserve visible findings.
+
+## Checks and limits
+
+```powershell
+npm run build
+npm test
+node scripts/smoke-shell.mjs
+node scripts/smoke-watcher.mjs
+node scripts/smoke-reviewer.mjs
+node scripts/smoke-workflow.mjs
+node scripts/smoke-voice.mjs
+node scripts/smoke-completion.mjs
+npm run secrets:check
+```
+
+Run Electron smoke scripts sequentially. Reviewer/voice/completion scripts use real providers or the installed Codex CLI, may consume credits, and need network access. Other tests cover source validation and synthetic provider failures; they do not establish live-provider availability. The workflow check opens a controlled temporary file in VS Code. Screenshots stay in ignored `artifacts/`.
+
+Reviews are bounded to 12 source files, 12,000 characters per file and 45,000 context characters; batches contain at most three files and results at most 12 findings. Supported source types are TS/TSX/JS/JSX/JSON. Secrets, dependencies, generated files and symlink escapes are excluded. No automatic tests or arbitrary project commands run. AI requests have a 30-second request timeout, one retry across transient failures and a 90-second review deadline. Skipped, failed or outdated coverage cannot establish a clean project. Findings remain potential issues, not proof of exploitability or security certification.
+
+This MVP runs from source and has no packaged installer, telemetry, database, accounts or automatic code modification. Native positioning and speech should be checked on the actual demo machine; speaker audibility and additional display scaling need manual confirmation.
+
+Before every push, stage only intended files and run `npm run secrets:check`. Never force-push or commit `.env`, runtime notification descriptors, dependencies or build output.
