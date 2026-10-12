@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-export type Completion = { type: 'agent-turn-complete'; cwd: string; 'thread-id'?: string; 'turn-id'?: string };
+export type Completion = { type: 'agent-turn-complete'; cwd: string; 'thread-id'?: string; 'turn-id'?: string; taskContext?: string };
 export function normalizeWorkspace(path: string) { const p = resolve(path).replace(/[\\/]+$/, ''); return process.platform === 'win32' ? p.toLowerCase() : p; }
 export async function startBridge(directory: string, getWorkspace: () => string | undefined, accept: (event: Completion) => void) {
   const token = randomBytes(32).toString('hex');
@@ -22,10 +22,11 @@ export async function startBridge(directory: string, getWorkspace: () => string 
         const d = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         if (d.type !== 'agent-turn-complete' || typeof d.cwd !== 'string' || d.cwd.length > 2048 || !getWorkspace() || normalizeWorkspace(d.cwd) !== normalizeWorkspace(getWorkspace()!)) { end(422); return; }
         if (['thread-id','turn-id'].some(k => d[k] !== undefined && (typeof d[k] !== 'string' || d[k].length > 200))) { end(422); return; }
+        if (d.taskContext !== undefined && (typeof d.taskContext !== 'string' || d.taskContext.length > 1600)) { end(422); return; }
         const id = d['thread-id'] && d['turn-id'] ? JSON.stringify([normalizeWorkspace(d.cwd),d['thread-id'],d['turn-id']]) : undefined;
         if (id && seen.has(id)) { end(204); return; }
         if (id) { if (seen.size >= 1024) seen.delete(seen.values().next().value!); seen.add(id); }
-        accept({ type: d.type, cwd: d.cwd, 'thread-id': d['thread-id'], 'turn-id': d['turn-id'] }); end(204);
+        accept({ type: d.type, cwd: d.cwd, 'thread-id': d['thread-id'], 'turn-id': d['turn-id'], taskContext: d.taskContext }); end(204);
       } catch { end(400); }
     });
     req.on('error', () => {});

@@ -14,7 +14,9 @@ export async function openEditor(root:string,file:string,line:number){
  for(const exe of candidates){
   try{await access(exe);}catch{continue;}
   try{
-   await new Promise<void>((yes,no)=>{const child=spawn(exe,['--goto',`${path}:${line}:1`],{shell:false,windowsHide:true,stdio:'ignore',detached:true,env:{...process.env,ELECTRON_RUN_AS_NODE:undefined,ANTHROPIC_API_KEY:undefined,DEEPGRAM_API_KEY:undefined}});child.once('error',no);child.once('spawn',()=>{child.unref();yes();});});
+   // A dedicated visible window avoids routing the file into a background-only
+   // VS Code instance and preserves the user's existing editor workspace.
+   await new Promise<void>((yes,no)=>{const child=spawn(exe,['--new-window','--goto',`${path}:${line}:1`],{shell:false,windowsHide:false,stdio:'ignore',detached:true,env:{...process.env,ELECTRON_RUN_AS_NODE:undefined,ANTHROPIC_API_KEY:undefined,DEEPGRAM_API_KEY:undefined}});child.once('error',no);child.once('spawn',()=>{child.unref();yes();});});
    return;
   }catch{/* Try the registered protocol if the native executable cannot launch. */}
  }

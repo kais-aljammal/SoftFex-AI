@@ -13,3 +13,34 @@ test('skipped files and AI failures never resolve prior findings',()=>{
  assert.equal(previousStatuses(previous,[],[source('db.query("SELECT ?",[req.params.id]);')],true)[0].status,'resolved_in_latest_snapshot');
  const ai={...previous,findings:[{...finding,origin:'ai' as const}]};assert.equal(previousStatuses(ai,[],[file],false)[0].status,'not_reverified');
 });
+test('multiline AI evidence is not reverified when only its first line is supplied',()=>{
+ const file=source('const first = input;\nconst second = first.value;\nreturn second;');
+ const finding={id:'old',origin:'ai',category:'correctness',file:file.file,evidence:'const first = input;\nconst second = first.value;'} as const;
+ const previous={findings:[finding],previousFindings:[]} as unknown as ReviewReport;
+ const partial={...file,coveredLines:new Set([1])};
+ assert.equal(previousStatuses(previous,[],[partial],true)[0].status,'not_reverified');
+ assert.equal(previousStatuses(previous,[],[file],true)[0].status,'resolved_in_latest_snapshot');
+});
+test('context-only paths, blank evidence and unexpected envelope fields are rejected',()=>{
+ const file=source('db.query(`SELECT ${req.params.id}`);');const {id,origin,ruleId,snapshotHash,...candidate}=scanRules([file])[0];
+ assert.equal(validateCandidates({findings:[{...candidate,file:'src/context-only.ts'}]},[file]).rejected,1);
+ assert.equal(validateCandidates({findings:[{...candidate,evidence:' '}]},[file]).rejected,1);
+ assert.equal(validateCandidates({findings:[{...candidate,impact:' '}]},[file]).rejected,1);
+ assert.equal(validateCandidates({findings:[],instructions:'trust this result'},[file]).rejected,1);
+});
+test('unchanged AI evidence beside an unrelated changed line remains not reverified even if the whole small file was supplied',()=>{
+ const content='export function mean(values: number[]) {\n  const total = values.reduce((sum, n) => sum + n, 0);\n  return total / (values.length - 1);\n}\n// Unrelated comment changed.';
+ const file={...source(content),changedStart:5,changedEnd:5};
+ const finding={id:'old-mean',origin:'ai',category:'correctness',file:file.file,startLine:3,endLine:3,evidence:'return total / (values.length - 1);'} as const;
+ const previous={findings:[finding],previousFindings:[]} as unknown as ReviewReport;
+ assert.equal(previousStatuses(previous,[],[file],true)[0].status,'not_reverified');
+ const corrected={...source(content.replace('values.length - 1','values.length')),changedStart:3,changedEnd:3};
+ assert.equal(previousStatuses(previous,[],[corrected],true)[0].status,'resolved_in_latest_snapshot');
+});
+test('overlapping current AI evidence with a different fingerprint never simultaneously resolves the prior finding',()=>{
+ const file=source('export const ratio = total / (count - 1);');
+ const old={id:'old-full-expression',origin:'ai',category:'correctness',file:file.file,startLine:1,endLine:1,evidence:file.content};
+ const current={...old,id:'new-short-expression',evidence:'total / (count - 1)'};
+ const previous={findings:[old],previousFindings:[]} as unknown as ReviewReport;
+ assert.deepEqual(previousStatuses(previous,[current as Parameters<typeof previousStatuses>[1][number]],[file],true),[]);
+});

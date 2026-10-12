@@ -1,6 +1,6 @@
 import {_electron as electron} from 'playwright';import electronPath from 'electron';import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';
-import {waitState} from './test-helpers.mjs';
+import {waitState,openSettings} from './test-helpers.mjs';
 const root=await mkdtemp(join(tmpdir(),'softfex-ui-review-'));await mkdir(join(root,'src'));
 const safe=await readFile('tests/fixtures/safe-auth.ts','utf8');const unsafe=await readFile('tests/fixtures/vulnerable-auth.ts','utf8');await writeFile(join(root,'src/auth.ts'),safe);
 const app=await electron.launch({executablePath:electronPath,args:['.']});
@@ -14,7 +14,7 @@ try{
  console.log('PASS: actual changed unsafe source produced a local finding in Electron.');
  await writeFile(join(root,'src/math.ts'),'// Return the arithmetic mean of a nonempty list.\nexport function average(nums: number[]) {\n  return nums.reduce((a,b) => a+b, 0) / 0;\n}\n');
  await waitState(page,s=>s.changedFiles===1);
- await page.getByRole('checkbox',{name:/Enable AI review/}).click();await waitState(page,s=>s.aiEnabled);await page.getByRole('button',{name:'Review Again',exact:true}).click();
+ await openSettings(page);await page.getByRole('checkbox',{name:/Enable AI review/}).click();await waitState(page,s=>s.aiEnabled);await page.getByRole('button',{name:'Review Again',exact:true}).click();
  state=await waitState(page,s=>s.phase!=='reviewing'&&s.report?.reviewedFiles.includes('src/math.ts'),100000);assert.equal(state.report.aiStatus,'completed',state.report.note);assert.ok(state.report.findings.some(f=>f.origin==='ai'&&f.file==='src/math.ts'));
  assert.ok(state.report.previousFindings.some(p=>p.status==='not_reverified'),'Auth was outside this review, so it cannot resolve.');
  await page.screenshot({path:'artifacts/reviewer.png'});assert.deepEqual(errors,[]);

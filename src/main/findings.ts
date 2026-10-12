@@ -13,12 +13,12 @@ export function fingerprint(finding:Pick<Finding,'origin'|'ruleId'|'category'|'f
   return createHash('sha256').update([finding.ruleId||finding.category,finding.file.toLowerCase(),finding.evidence.replace(/\s+/g,' ').trim()].join('|')).digest('hex').slice(0,24);
 }
 export function validateCandidates(raw:unknown,files:SnapshotFile[]):{findings:Finding[];rejected:number}{
-  if(typeof raw!=='object'||raw===null||!Array.isArray((raw as {findings?:unknown}).findings))return {findings:[],rejected:1};
+  if(typeof raw!=='object'||raw===null||Object.keys(raw).some(key=>key!=='findings')||!Array.isArray((raw as {findings?:unknown}).findings))return {findings:[],rejected:1};
   const input=(raw as {findings:unknown[]}).findings;const findings:Finding[]=[];let rejected=Math.max(0,input.length-12);
   for(const item of input.slice(0,12)){
     const parsed=CandidateSchema.safeParse(item);if(!parsed.success){rejected++;continue;}
     const candidate=parsed.data;const file=files.find(f=>f.file===candidate.file);const lines=file?.content.split(/\r?\n/);
-    if(!file||!lines||candidate.endLine<candidate.startLine||candidate.endLine>lines.length||!lines.slice(candidate.startLine-1,candidate.endLine).join('\n').includes(candidate.evidence)||!Array.from({length:candidate.endLine-candidate.startLine+1},(_,i)=>candidate.startLine+i).every(line=>file.coveredLines.has(line))){rejected++;continue;}
+    if(!file||!lines||![candidate.title,candidate.evidence,candidate.explanation,candidate.impact,candidate.recommendation].every(text=>text.trim())||candidate.endLine<candidate.startLine||candidate.endLine>lines.length||!lines.slice(candidate.startLine-1,candidate.endLine).join('\n').includes(candidate.evidence)||!Array.from({length:candidate.endLine-candidate.startLine+1},(_,i)=>candidate.startLine+i).every(line=>file.coveredLines.has(line))){rejected++;continue;}
     const finding:Finding={...candidate,origin:'ai',id:'',snapshotHash:file.hash};finding.id=fingerprint(finding);findings.push(finding);
   }
   return {findings,rejected};
@@ -35,15 +35,20 @@ export function dedupeFindings(findings:Finding[]){
 export function previousStatuses(previous:ReviewReport|undefined,findings:Finding[],files:SnapshotFile[],aiSucceeded:boolean):ReviewReport['previousFindings']{
   if(!previous)return [];
   const all=[...previous.findings,...previous.previousFindings.filter(p=>p.status==='not_reverified').map(p=>p.finding)];
-  return [...new Map(all.map(f=>[f.id,f])).values()].filter(f=>!findings.some(n=>n.id===f.id)).map(f=>{
+  return [...new Map(all.map(f=>[f.id,f])).values()].filter(f=>!findings.some(n=>n.id===f.id||
+    (n.file===f.file&&n.category===f.category&&n.startLine<=f.endLine&&f.startLine<=n.endLine))).map(f=>{
     const file=files.find(n=>n.file===f.file);
     // An AI finding is only re-verified if its original evidence region was supplied again,
     // or the entire current file was supplied. Removed/moved scope remains uncertain.
     const location=file?.content.indexOf(f.evidence)??-1;
     const line=location>=0?file!.content.slice(0,location).split(/\r?\n/).length:undefined;
     const full=file&&file.coveredLines.size===file.content.split(/\r?\n/).length;
-    const aiCovered=full||(line!==undefined&&file?.coveredLines.has(line));
-    const resolved=!!file&&(f.origin==='rule'||(aiSucceeded&&aiCovered));
+    const evidenceLines=f.evidence.split(/\r?\n/).length;
+    const aiCovered=full||(line!==undefined&&Array.from({length:evidenceLines},(_,index)=>line+index).every(number=>file?.coveredLines.has(number)));
+    // Changed-code reviews deliberately omit unrelated unchanged defects. Merely
+    // supplying one in adjacent context is not a negative re-verification result.
+    const unchangedOutsideChange=line!==undefined&&file&&(line>file.changedEnd||line+evidenceLines-1<file.changedStart);
+    const resolved=!!file&&(f.origin==='rule'||(aiSucceeded&&aiCovered&&!unchangedOutsideChange));
     return {finding:f,status:resolved?'resolved_in_latest_snapshot' as const:'not_reverified' as const};
   });
 }

@@ -59,10 +59,12 @@ export class WorkspaceWatcher {
     });
     instance.watcher.on('all',(event,path)=>{if(['add','change','unlink'].includes(event)) void instance.onFile(path);});
     instance.watcher.on('error',()=>{instance.overflow=true;changed();});
-    await new Promise<void>((yes,no)=>{instance.watcher!.once('ready',yes);instance.watcher!.once('error',no);});
-    // Close the baseline-to-watcher startup gap using a read-only reconciliation.
-    for (const file of new Set([...beforeFiles,...await instance.listFiles()])) await instance.onFile(resolve(root,file));
-    return instance;
+    try {
+      await new Promise<void>((yes,no)=>{instance.watcher!.once('ready',yes);instance.watcher!.once('error',no);});
+      // Close the baseline-to-watcher startup gap using a read-only reconciliation.
+      for (const file of new Set([...beforeFiles,...await instance.listFiles()])) await instance.onFile(resolve(root,file));
+      return instance;
+    } catch(error) {await instance.close();throw error;}
   }
   async listFiles():Promise<string[]> {
     const files:string[]=[]; let visited=0;

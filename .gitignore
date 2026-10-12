@@ -6,6 +6,11 @@ dist/
 out/
 *.log
 .softfex-local/
+.aws/
+.codex/
+.agents/
+id_rsa
+id_ed25519
 artifacts/
 build/
 coverage/
@@ -16,6 +21,7 @@ release/
 *.key
 *.p12
 *.pfx
+*.keystore
 credentials*.json
 auth.json
 secrets.*

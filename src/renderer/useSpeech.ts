@@ -3,15 +3,15 @@ import type {AppState} from '../shared/types';
 export function useSpeech(state:AppState|undefined){
  const [speaking,setSpeaking]=useState(false),[levels,setLevels]=useState([3,3,3,3,3]),[status,setStatus]=useState('');
  const generation=useRef(0),cleanup=useRef<()=>void>(()=>{}),announced=useRef<string|undefined>(undefined);
- const stop=useCallback(()=>{generation.current++;cleanup.current();cleanup.current=()=>{};window.speechSynthesis?.cancel();setSpeaking(false);setLevels([3,3,3,3,3]);void window.softfex.stopSpeech();},[]);
+ const stop=useCallback(()=>{generation.current++;cleanup.current();cleanup.current=()=>{};window.speechSynthesis?.cancel();setSpeaking(false);setLevels([3,3,3,3,3]);setStatus('');void window.softfex.stopSpeech();},[]);
  const speak=useCallback(async(request:{kind:'test'}|{kind:'report';reviewId:string})=>{
   stop();const current=generation.current;setStatus('Preparing voice…');
   const result=await window.softfex.requestSpeech(request).catch(()=>undefined);
   if(current!==generation.current)return;
   if(!result?.ok){setStatus(result?.error||'Voice unavailable. Findings remain visible.');return;}
-  const response=result.value;
+  const response=result.value;let fallbackStarted=false;
   function fallback(){
-   if(current!==generation.current)return;
+   if(current!==generation.current||fallbackStarted)return;fallbackStarted=true;
    if(!window.speechSynthesis){setStatus('System voice unavailable. Findings remain visible.');return;}
    const utterance=new SpeechSynthesisUtterance(response.text);utterance.rate=1.05;utterance.lang='en-US';
    let started=false;let ended=false;
@@ -31,7 +31,7 @@ export function useSpeech(state:AppState|undefined){
    if(current!==generation.current){dispose();return;}
    setSpeaking(true);setStatus('Speaking · Deepgram Aura 2');
    try{
-    if(context)return;context=new AudioContext();const source=context.createMediaElementSource(audio);const analyser=context.createAnalyser();analyser.fftSize=64;source.connect(analyser);analyser.connect(context.destination);void context.resume();
+    if(context)return;context=new AudioContext();const source=context.createMediaElementSource(audio);const analyser=context.createAnalyser();analyser.fftSize=64;source.connect(analyser);analyser.connect(context.destination);void context.resume().catch(()=>{});
     const data=new Uint8Array(analyser.frequencyBinCount);
     const tick=()=>{if(current!==generation.current)return;analyser.getByteFrequencyData(data);setLevels([1,3,6,9,13].map(i=>3+Math.round(data[i]/255*16)));frame=requestAnimationFrame(tick);};tick();
    }catch{setLevels([5,9,13,9,5]);}

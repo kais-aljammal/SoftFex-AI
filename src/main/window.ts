@@ -2,19 +2,27 @@ import { BrowserWindow, screen, systemPreferences } from 'electron';
 import { join } from 'node:path';
 import type {WindowMode} from '../shared/types';
 export function createNotch() {
+  const topLevel=process.platform==='win32'?'screen-saver':'floating';
   const win = new BrowserWindow({
-    width: 220, height: 40, frame: false, transparent: process.platform!=='win32', resizable: false,
+    width: 220, height: 40, frame: false, thickFrame: false, transparent: process.platform!=='win32', resizable: false,
     skipTaskbar: true, alwaysOnTop: true, show: false, backgroundColor: process.platform==='win32'?'#07090D':'#00000000',
     webPreferences: { preload: join(__dirname, '../preload/index.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
   });
-  win.setAlwaysOnTop(true, 'floating');
+  win.setAlwaysOnTop(true, topLevel);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', e => e.preventDefault());
   win.webContents.session.setPermissionRequestHandler((_wc, _permission, respond) => respond(false));
   void positionNotch(win, 'collapsed', false);
   // A shaped transparent HWND can suppress the first paint on Windows. Show after
   // document load, then apply the region; never wait on that paint to show it.
-  win.webContents.once('did-finish-load', () => {win.showInactive();void positionNotch(win,'collapsed',false);});
+  win.webContents.once('did-finish-load', () => {
+    win.showInactive();
+    void positionNotch(win,'collapsed',false);
+    win.setAlwaysOnTop(true, topLevel);
+  });
+  // Windows may reset native ordering during the first paint after an inactive
+  // show. Reassert without activating or stealing focus from the coding agent.
+  win.once('ready-to-show',()=>{if(win.isVisible())win.setAlwaysOnTop(true,topLevel);});
   void win.loadFile(join(__dirname, '../renderer/index.html'));
   return win;
 }
