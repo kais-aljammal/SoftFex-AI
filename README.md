@@ -2,134 +2,60 @@
 
 **A second look before you ship.**
 
-An independent review of your Codex changes, right there on your Windows desktop. SoftFex watches your selected project, highlights potential engineering issues with real source evidence, and generates a correction prompt you can send back to Codex. After the correction, review again to see what is still detected or could not be re-verified.
+A small Windows desktop island that independently reviews your Codex changes with Claude. Inspect potential issues, copy a correction prompt, and review the fix.
 
-[Visit the website](https://softfex-ai-landing.vercel.app) · [Download Windows beta](https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64.zip) · [Release notes](https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1)
+[Website](https://softfex-ai-landing.vercel.app) · [Download Windows beta](https://github.com/kais-aljammal/SoftFex-AI/releases/download/v0.1.0-beta.1/SoftFex-AI-0.1.0-windows-x64.zip) · [Release notes](https://github.com/kais-aljammal/SoftFex-AI/releases/tag/v0.1.0-beta.1)
 
-[![SoftFex website: a floating review island highlights a potential average-calculation issue](docs/assets/softfex-website.png)](https://softfex-ai-landing.vercel.app)
+[![SoftFex website and illustrative review island](docs/assets/softfex-website.png)](https://softfex-ai-landing.vercel.app)
 
-*Captured from the live website. The code and island are an illustrative preview, not a screenshot of the running Windows app.*
+*Website illustration, not a screenshot of the Windows app.*
 
-## Open the app in a few steps
+## Get started
 
-1. **Download the Windows ZIP** using the link above. This beta is for Windows x64.
-2. **Extract everything.** Right-click the downloaded ZIP, choose **Extract All**, and select a folder you can write to. Keep all extracted files together; do not open the app from inside the ZIP or move only the executable.
-3. **Open `SoftFex AI.exe`** in the extracted folder. No installer or `npm install` is needed. Look for the small black island at the top center of your screen and click it to expand.
-4. **Configure your Anthropic key.** Click **Configure Anthropic key** and enter your own API key in the separate masked PowerShell prompt. After it confirms the key was saved, close the prompt and return to SoftFex. Never enter your key into a chat or a source file.
-5. **Choose your project.** Click **Choose project folder**, then open **Review settings** and select **Enable AI review** to consent to sending filtered source and available task context to Anthropic.
-6. **Click Review Now.** Open a finding to inspect the source evidence, use **Open in VS Code**, or **Copy fix prompt** and give it to Codex. After the code changes, click **Review Again**. Reviews cover the displayed source scope, not a guarantee that the whole project is correct.
+1. **Download** the Windows x64 ZIP above.
+2. Right-click it → **Extract All**. Keep all extracted files together.
+3. Open **SoftFex AI.exe**, then click the black island at the top of your screen.
+4. Click **Configure Anthropic key** and enter your key in the masked terminal prompt.
+5. **Choose project folder** → **Review settings** → **Enable AI review** → **Review Now**.
 
-You need an Anthropic API key with available credits for AI review. Local checks remain available without it. VS Code is needed for source navigation. **Deepgram is optional:** configure its key for Aura 2 voice alerts, or use the system-voice fallback. Use **Test voice** and **Mute** in the expanded island.
+Bring your own Anthropic API key with credits. No installer, Node.js or Python is needed just to open the app. Voice is optional: configure Deepgram or use system voice. VS Code is needed for **Open in VS Code**.
 
-Node.js and Python are needed for the optional automatic Codex completion connection below, not simply to open the downloaded app.
+## Review, fix, repeat
 
-## How the review loop works
+Open a finding → inspect the evidence → **Copy fix prompt** → give it to Codex → **Review Again**.
 
-**Codex builds → SoftFex takes a look → you inspect the evidence → Codex corrects the code → SoftFex reviews again.**
+![Website preview showing a corrected calculation ready for re-review](docs/assets/softfex-correction-preview.png)
 
-![Website correction preview: the divisor is changed to values.length, ready for re-review](docs/assets/softfex-correction-preview.png)
+*Illustrative correction awaiting re-review.*
 
-*The website's example correction, awaiting re-review. A code change alone does not establish that an issue is resolved.*
+## Codex completion integration
 
-SoftFex uses one independent Claude Sonnet 5.5 reviewer alongside deterministic local checks. It can miss issues, and it does not run your project's tests or apply fixes itself. Findings, skipped coverage and re-verification uncertainty stay visible.
+For automatic reviews, install **Node.js 24+**, **Python 3.11+** and an authenticated **Codex CLI**. Open SoftFex, select your project, then run this in PowerShell with the same project path:
 
-Electron main owns file access, Anthropic requests and Deepgram requests; the sandboxed React renderer receives typed reports and generated audio only.
+```powershell
+node "$env:APPDATA\SoftFex AI\runtime\scripts\start-codex.cjs" -C "C:\path\to\your\project"
+```
 
-## Run from source (developers)
+Global Codex/Coucou settings stay unchanged. Existing Codex desktop chats are not connected automatically. You can always use **Review Now** instead.
 
-Requires Windows, Node.js 24+, and VS Code for source navigation.
+## Develop locally
 
 ```powershell
 npm ci
 npm run setup:key
-npm run setup:voice
 npm run build
-npm test
 npm start
 ```
 
-The setup commands open masked terminal prompts and preserve other settings in the ignored local `.env`. `.env.example` contains blank variable names only. Never paste keys into chat. The app reads credentials only in main. Choose a project folder, then open Review settings and explicitly enable AI review if you want filtered source and available task context sent to Anthropic. Local checks work without AI. Configured key values and recognizable credential patterns are filtered before model requests, renderer reports and copied prompts. Secret filtering remains best-effort.
-
-The sole review model is Claude Sonnet 5.5 (`claude-sonnet-5-5`), using the official Anthropic SDK with structured JSON and Zod/source-evidence validation. Voice uses Deepgram Aura 2 (`aura-2-thalia-en`), with browser/Windows speech fallback. Mute and Test voice are in the expanded island. Source navigation opens a dedicated visible VS Code window at the validated file and line.
-
-Every AI review evaluates correctness, plus at most two relevant engineering disciplines: integration, data flow, security, frontend or reliability. Supporting context follows static relative imports and a bounded nearby-caller search: at most four files and 8,000 characters. Context-only files do not count as reviewed coverage or resolve old findings. Validated CLI task context is limited to the latest supplied task string, up to 1,600 characters; no private reasoning or assistant transcript is collected.
-
-`npm run api:check` and `npm run voice:check` make minimal live connectivity requests; the latter verifies audio generation, not speaker audibility.
-
-## Codex completion integration
-
-This optional connection reviews changes when a supported Codex CLI task finishes. It requires **Node.js 24+**, **Python 3.11+** and an authenticated **Codex CLI** available on PATH. It does not automatically connect existing Codex desktop conversations.
-
-Start SoftFex and choose your project folder. In a PowerShell terminal, run the command for your installation, replacing `C:\path\to\your\project` with that same selected folder.
-
-**Downloaded Windows app:**
+Run `npm test` for unit tests. Optional Deepgram setup: `npm run setup:voice`. From the repository, connect Codex with:
 
 ```powershell
-node "$env:APPDATA\SoftFex AI\runtime\scripts\start-codex.cjs" -C "C:\path\to\your\project"
+node scripts/start-codex.cjs -C "C:\path\to\your\project"
 ```
 
-**Running from source:**
+## Beta notes
 
-```powershell
-node "C:\path\to\SoftFex-AI\scripts\start-codex.cjs" -C "C:\path\to\your\project"
-```
-
-The wrapper inspects the existing Codex `notify` array, preserves it in ignored local runtime storage, and overrides `notify` only for that CLI invocation. The relay chains the existing notification command and posts a reduced, authenticated completion event to SoftFex on loopback. Global Codex settings and Coucou hooks are never rewritten. Existing Codex desktop conversations do not automatically adopt the wrapper. If completion integration is unavailable, use Review Now; filesystem observation still works.
-
-## Windows portable beta
-
-The app-and-source ZIP keeps `SoftFex AI.exe` at the top level and includes the full tracked repository in `Code/`. Extract everything, open the executable, and keep its companion files together. `Code/` excludes credentials, private runtime data, Git history and installed dependencies. Recreate this bundle with `npm run package:bundle` using the original verified beta ZIP in `release/`.
-
-Download the Windows x64 beta ZIP, extract **all** files to a writable local folder, and run `SoftFex AI.exe` from that folder. Keep its `resources`, `locales`, DLLs and other companion files together. This beta is unsigned; Windows may show an unknown-publisher warning. It includes Electron and does not require this repository or `npm install` to launch. VS Code is required for Open in VS Code. The separate Codex completion launcher requires installed Node.js 24+, Python 3.11+ (with `tomllib`), and an authenticated Codex CLI available on PATH.
-
-`SoftFex-AI-0.1.0-windows-x64.zip` is 168,215,229 bytes. SHA-256: `1F0C1B503BA93FE1CE70B8816BA14A2113CF0484A06D227D984474527B1F55A4`.
-
-Beta 1 opens the finding file and line. The subsequent source navigation fix also opens the selected project as the VS Code workspace; it is tested from source with paths containing spaces and is not included in this frozen ZIP. Sidebar expansion and the protocol fallback's workspace behavior remain manual limitations.
-
-Open SoftFex, choose Configure Anthropic key, and enter the key in the separate masked Windows PowerShell prompt. Configure Deepgram voice is optional; browser/Windows speech is the fallback. Keys never pass through the renderer or command-line arguments. They are stored in `%APPDATA%\SoftFex AI\credentials.env` with inheritance disabled and access restricted to the current Windows user. This is a private local file, not an encrypted vault. The development `.env` remains unchanged and is excluded from the package. Close setup and return to SoftFex; key presence refreshes automatically. Enable AI review separately to consent to sending filtered source/context.
-
-After starting the packaged app and selecting your project, launch the supported Codex session from a terminal:
-
-```powershell
-node "$env:APPDATA\SoftFex AI\runtime\scripts\start-codex.cjs" -C "C:\path\to\your\project"
-```
-
-Runtime helpers and the authenticated loopback descriptor live under the current user's application data, outside the executable. Global Codex/Coucou configuration stays unchanged. Review Now works without the Codex launcher. `npm run package:windows` also builds a portable single executable, but the release ZIP is the artifact verified outside the repository. Inspect its actual contents with `node scripts/verify-package.mjs --zip`. Signing, cross-machine installation behavior and human speaker audibility remain beta/manual gates.
-
-## Three-minute demo
-
-1. Run `node scripts/demo-fixture.mjs safe`, start SoftFex, and choose the printed demo folder. Enable AI review and click Test voice.
-2. Run `node scripts/demo-fixture.mjs unsafe`, or ask the wrapped Codex CLI to make that controlled fixture change. The pending counter updates; a CLI completion triggers review, or click Review Now.
-3. Open the potential SQL-injection finding, inspect its source evidence, open the exact line in VS Code, and copy the fix prompt. SoftFex never edits code or runs the fix itself.
-4. Have Codex apply the correction, or honestly demonstrate the prepared correction with `node scripts/demo-fixture.mjs safe`. Review Again shows whether this specific finding is no longer detected.
-
-Do not edit report data or present the controlled example as a real database/server. API failures preserve local checks and explicit incomplete coverage; voice failures preserve visible findings.
-
-## Checks and limits
-
-```powershell
-npm run build
-npm test
-node scripts/smoke-shell.mjs
-node scripts/smoke-watcher.mjs
-node scripts/smoke-reviewer.mjs
-node scripts/smoke-workflow.mjs
-node scripts/smoke-voice.mjs
-node scripts/smoke-completion.mjs
-node scripts/smoke-security.mjs
-node scripts/smoke-workspace-recovery.mjs
-node scripts/smoke-voice-failure.mjs
-node scripts/smoke-auto-voice.mjs
-node scripts/smoke-private-evidence.mjs
-node scripts/smoke-review-failure.mjs
-node scripts/smoke-live-scenarios.mjs
-npm run secrets:check
-```
-
-Run Electron smoke scripts sequentially. Reviewer/voice/completion and live-scenario scripts use real providers or the installed Codex CLI, may consume credits, and need network access. Controlled Codex test turns use medium reasoning effort per invocation; the installed model and global configuration are preserved. The live-scenario check has Codex actually write and correct controlled SQL, arithmetic and HTTP-contract defects, then reviews the clean implementation. It checks real clipboard content, source-bound findings and playback events, and writes sanitized timings to ignored `artifacts/live-scenarios.json`. Folder-picker responses in automated scripts are supplied by tests; native picker and mouse checks are separate. Recovery and corrupt-audio checks use synthetic failure injection. The workflow checks open controlled temporary files in VS Code. Screenshots stay in ignored `artifacts/`.
-
-Reviews are bounded to 12 source files, 12,000 characters per file and 45,000 context characters; batches contain at most three files and results at most 12 findings. Supported source types are TS/TSX/JS/JSX/JSON. Secrets, dependencies, generated files and symlink escapes are excluded. No automatic tests or arbitrary project commands run. AI requests have a 30-second request timeout, one retry across transient failures and a 90-second review deadline. Skipped, failed or outdated coverage cannot establish a clean project. Findings remain potential issues, not proof of exploitability or security certification.
-
-This MVP has source and portable beta builds, with no installer, telemetry, database, accounts or automatic code modification. On Windows it uses an opaque black frameless window with a rounded native region and tight bounds: transparent compositing failed native input checks on the demo machine. Native folder selection, source observation, mouse interaction, collapse/reopen and review playback were exercised at the current 119% display scaling; the product's source action was independently observed in VS Code at the actual file and line. Speaker audibility, subjective visual quality and other display scaling still need manual confirmation.
-
-Before every push, stage only intended files and run `npm run secrets:check`. The repository's `.githooks/pre-push` runs the same check when `git config core.hooksPath .githooks` is configured locally. Never force-push or commit `.env`, runtime notification descriptors, dependencies or build output.
+- Unsigned Windows x64 beta; see release notes for known limitations.
+- Claude Sonnet 5.5 plus local checks. Reviews are limited to 12 source files and can miss issues; SoftFex does not run your tests or apply fixes.
+- API keys are handled only by Electron main. AI review sends filtered source/context after consent; secret filtering is best-effort. Never commit `.env`.
+- Beta 1 opens the finding file and line. The latest source also opens its project workspace; sidebar reveal remains a manual check.
