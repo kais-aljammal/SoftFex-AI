@@ -9,6 +9,7 @@
     "check": "tsc --noEmit",
     "build": "npm run check && node scripts/build.mjs",
     "package:windows": "npm run build && electron-builder --config electron-builder.json --win portable --x64",
+    "package:bundle": "node scripts/package-bundle.mjs",
     "start": "electron .",
     "dev": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",

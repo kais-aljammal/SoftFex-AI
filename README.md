@@ -35,6 +35,8 @@ The wrapper inspects the existing Codex `notify` array, preserves it in ignored 
 
 ## Windows portable beta
 
+The app-and-source ZIP keeps `SoftFex AI.exe` at the top level and includes the full tracked repository in `Code/`. Extract everything, open the executable, and keep its companion files together. `Code/` excludes credentials, private runtime data, Git history and installed dependencies. Recreate this bundle with `npm run package:bundle` using the original verified beta ZIP in `release/`.
+
 Download the Windows x64 beta ZIP, extract **all** files to a writable local folder, and run `SoftFex AI.exe` from that folder. Keep its `resources`, `locales`, DLLs and other companion files together. This beta is unsigned; Windows may show an unknown-publisher warning. It includes Electron and does not require this repository or `npm install` to launch. VS Code is required for Open in VS Code. The separate Codex completion launcher requires installed Node.js 24+, Python 3.11+ (with `tomllib`), and an authenticated Codex CLI available on PATH.
 
 `SoftFex-AI-0.1.0-windows-x64.zip` is 168,215,229 bytes. SHA-256: `1F0C1B503BA93FE1CE70B8816BA14A2113CF0484A06D227D984474527B1F55A4`.
