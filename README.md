@@ -33,6 +33,22 @@ node C:\path\to\SoftFex-AI\scripts\start-codex.cjs -C C:\path\to\your\project
 
 The wrapper inspects the existing Codex `notify` array, preserves it in ignored local runtime storage, and overrides `notify` only for that CLI invocation. The relay chains the existing notification command and posts a reduced, authenticated completion event to SoftFex on loopback. Global Codex settings and Coucou hooks are never rewritten. Existing Codex desktop conversations do not automatically adopt the wrapper. If completion integration is unavailable, use Review Now; filesystem observation still works.
 
+## Windows portable beta
+
+Download the Windows x64 beta ZIP, extract **all** files to a writable local folder, and run `SoftFex AI.exe` from that folder. Keep its `resources`, `locales`, DLLs and other companion files together. This beta is unsigned; Windows may show an unknown-publisher warning. It includes Electron and does not require this repository or `npm install` to launch. VS Code is required for Open in VS Code. The separate Codex completion launcher requires installed Node.js 24+, Python 3.11+ (with `tomllib`), and an authenticated Codex CLI available on PATH.
+
+`SoftFex-AI-0.1.0-windows-x64.zip` is 168,215,229 bytes. SHA-256: `1F0C1B503BA93FE1CE70B8816BA14A2113CF0484A06D227D984474527B1F55A4`.
+
+Open SoftFex, choose Configure Anthropic key, and enter the key in the separate masked Windows PowerShell prompt. Configure Deepgram voice is optional; browser/Windows speech is the fallback. Keys never pass through the renderer or command-line arguments. They are stored in `%APPDATA%\SoftFex AI\credentials.env` with inheritance disabled and access restricted to the current Windows user. This is a private local file, not an encrypted vault. The development `.env` remains unchanged and is excluded from the package. Close setup and return to SoftFex; key presence refreshes automatically. Enable AI review separately to consent to sending filtered source/context.
+
+After starting the packaged app and selecting your project, launch the supported Codex session from a terminal:
+
+```powershell
+node "$env:APPDATA\SoftFex AI\runtime\scripts\start-codex.cjs" -C "C:\path\to\your\project"
+```
+
+Runtime helpers and the authenticated loopback descriptor live under the current user's application data, outside the executable. Global Codex/Coucou configuration stays unchanged. Review Now works without the Codex launcher. `npm run package:windows` also builds a portable single executable, but the release ZIP is the artifact verified outside the repository. Inspect its actual contents with `node scripts/verify-package.mjs --zip`. Signing, cross-machine installation behavior and human speaker audibility remain beta/manual gates.
+
 ## Three-minute demo
 
 1. Run `node scripts/demo-fixture.mjs safe`, start SoftFex, and choose the printed demo folder. Enable AI review and click Test voice.
@@ -67,6 +83,6 @@ Run Electron smoke scripts sequentially. Reviewer/voice/completion and live-scen
 
 Reviews are bounded to 12 source files, 12,000 characters per file and 45,000 context characters; batches contain at most three files and results at most 12 findings. Supported source types are TS/TSX/JS/JSX/JSON. Secrets, dependencies, generated files and symlink escapes are excluded. No automatic tests or arbitrary project commands run. AI requests have a 30-second request timeout, one retry across transient failures and a 90-second review deadline. Skipped, failed or outdated coverage cannot establish a clean project. Findings remain potential issues, not proof of exploitability or security certification.
 
-This MVP runs from source and has no packaged installer, telemetry, database, accounts or automatic code modification. On Windows it uses an opaque black frameless window with a rounded native region and tight bounds: transparent compositing failed native input checks on the demo machine. Native folder selection, source observation, mouse interaction, collapse/reopen and review playback were exercised at the current 119% display scaling; the product's source action was independently observed in VS Code at the actual file and line. Speaker audibility, subjective visual quality and other display scaling still need manual confirmation.
+This MVP has source and portable beta builds, with no installer, telemetry, database, accounts or automatic code modification. On Windows it uses an opaque black frameless window with a rounded native region and tight bounds: transparent compositing failed native input checks on the demo machine. Native folder selection, source observation, mouse interaction, collapse/reopen and review playback were exercised at the current 119% display scaling; the product's source action was independently observed in VS Code at the actual file and line. Speaker audibility, subjective visual quality and other display scaling still need manual confirmation.
 
 Before every push, stage only intended files and run `npm run secrets:check`. The repository's `.githooks/pre-push` runs the same check when `git config core.hooksPath .githooks` is configured locally. Never force-push or commit `.env`, runtime notification descriptors, dependencies or build output.

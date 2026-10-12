@@ -1,8 +1,10 @@
 import { app, ipcMain, BrowserWindow, dialog, clipboard } from 'electron';
 import { createNotch, positionNotch } from './window';
 import type { AppState, Result } from '../shared/types';
-import { readApiKey, readCredential, checkConnectivity } from './credentials';
-import { resolve } from 'node:path';
+import { readApiKey, readCredential, checkConnectivity,configureCredentialStorage } from './credentials';
+import { resolve,join } from 'node:path';
+import {mkdirSync,copyFileSync} from 'node:fs';
+import {spawn} from 'node:child_process';
 import { WorkspaceWatcher,readSource } from './watcher';
 import { ReviewCoordinator } from './review';
 import {openEditor} from './open-editor';
@@ -24,6 +26,13 @@ const state: AppState = { phase: 'needs_workspace', changedFiles: 0, revision: 0
 function publish() { if(state.phase==='reviewing'||state.phase==='report_outdated')speechController?.abort();if (win && !win.isDestroyed()) win.webContents.send('softfex:state', publicState()); }
 app.setName('SoftFex AI');
 const projectRoot = resolve(__dirname, '../..');
+configureCredentialStorage(app.getPath('userData'),app.isPackaged);
+const runtimeRoot=app.isPackaged?join(app.getPath('userData'),'runtime'):projectRoot;
+function prepareRuntime(){
+  if(!app.isPackaged)return;
+  mkdirSync(join(runtimeRoot,'scripts'),{recursive:true});
+  for(const name of ['start-codex.cjs','softfex-notify.cjs','configure-key.ps1','launch-key-setup.ps1'])copyFileSync(join(process.resourcesPath,'helpers',name),join(runtimeRoot,'scripts',name));
+}
 const localSecrets=()=>[readApiKey(projectRoot),readCredential(projectRoot,'DEEPGRAM_API_KEY')].filter((key):key is string=>!!key);
 const sanitizeText=(text:string)=>redactText(text,localSecrets());
 function publicState(){return sanitizeOutbound(state,localSecrets());}
@@ -42,6 +51,7 @@ if (process.argv.includes('--voice-check')) {
   });
 } else if (!app.requestSingleInstanceLock()) app.quit();
 else void app.whenReady().then(() => {
+  prepareRuntime();
   win = createNotch();
   state.apiKeyPresent=!!readApiKey(projectRoot);
   function handle(name: string, callback: (...args: any[]) => unknown) {
@@ -51,6 +61,12 @@ else void app.whenReady().then(() => {
     });
   }
   handle('getState', () => {state.apiKeyPresent=!!readApiKey(projectRoot);state.deepgramKeyPresent=!!readCredential(projectRoot,'DEEPGRAM_API_KEY');return publicState();});
+  handle('configureCredential',(provider):Result=>{
+    if(provider!=='anthropic'&&provider!=='deepgram')return {ok:false,error:'Invalid credential provider.'};
+    const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',join(runtimeRoot,'scripts','launch-key-setup.ps1'),'-Directory',app.getPath('userData'),'-Provider',provider],{windowsHide:true,shell:false,stdio:'ignore'});
+    child.on('error',()=>{state.error='Could not open local key setup. Windows PowerShell is required.';publish();});child.unref();
+    return {ok:true,value:undefined};
+  });
   handle('setWindowMode', async (mode): Promise<Result> => {
     if (!['collapsed','changes','reviewing','warning','speaking','report','detail'].includes(mode)) return { ok: false, error: 'Invalid request' };
     await positionNotch(win, mode as WindowMode); return { ok: true, value: undefined };

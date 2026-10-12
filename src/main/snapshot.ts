@@ -1,5 +1,6 @@
 import { WorkspaceWatcher, readSource, LIMITS, type SourceFile } from './watcher';
-export type SnapshotFile = SourceFile & { changedStart: number; changedEnd: number; context: string; coveredLines: Set<number> };
+import type {Finding} from '../shared/types';
+export type SnapshotFile = SourceFile & { changedStart: number; changedEnd: number; context: string; coveredLines: Set<number>; reverificationIds?:readonly string[] };
 export type Snapshot = { revision: number; files: SnapshotFile[]; changedFiles: number; skippedFiles: string[]; mode:'changed'|'current_snapshot'; overflow:boolean };
 export function changedRange(before: string | undefined, after: string) {
   const current=after.split(/\r?\n/);if(before===undefined)return {start:1,end:current.length};
@@ -7,7 +8,7 @@ export function changedRange(before: string | undefined, after: string) {
   let oldEnd=previous.length-1,newEnd=current.length-1;while(oldEnd>=first&&newEnd>=first&&previous[oldEnd]===current[newEnd]){oldEnd--;newEnd--;}
   return {start:Math.min(first+1,current.length),end:Math.max(Math.min(first+1,current.length),newEnd+1)};
 }
-export async function captureSnapshot(watcher:WorkspaceWatcher, signal?:AbortSignal):Promise<Snapshot>{
+export async function captureSnapshot(watcher:WorkspaceWatcher, signal?:AbortSignal,prior:Finding[]=[]):Promise<Snapshot>{
   for(let attempt=0;attempt<2;attempt++){
     const waitStart=Date.now();
     while(Date.now()-watcher.lastChangeAt<500){
@@ -33,9 +34,15 @@ export async function captureSnapshot(watcher:WorkspaceWatcher, signal?:AbortSig
       const start=Math.max(1,changed.start-8),end=Math.min(lines.length,changed.end+8);
       for(let line=start;line<=end;line++)coveredLines.add(line);
       for(let line=1;line<=Math.min(6,lines.length);line++)if(/^(?:import|export .* from|const .*require\()/.test(lines[line-1]))coveredLines.add(line);
+      // Prior AI findings need their corrected scope, not a search for vanished old text.
+      // A whole eligible file is bounded by the existing 12k/file and 45k/context caps.
+      const targets=prior.filter(f=>f.origin==='ai'&&f.file===source.file).slice(0,LIMITS.maxFindings);
+      const fullContext=targets.length?lines.map((line,index)=>`${index+1}: ${line}`).join('\n'):undefined;
+      const reverificationIds=fullContext!==undefined&&total+fullContext.length<=LIMITS.maxTotalContextChars?targets.map(f=>f.id):[];
+      if(reverificationIds.length)for(let line=1;line<=lines.length;line++)coveredLines.add(line);
       const context=[...coveredLines].sort((a,b)=>a-b).map(line=>`${line}: ${lines[line-1]}`).join('\n');
       if(total+context.length>LIMITS.maxTotalContextChars){skippedFiles.push(`${source.file} (review context limit)`);continue;}
-      total+=context.length;files.push({...source,changedStart:changed.start,changedEnd:changed.end,context,coveredLines});
+      total+=context.length;files.push({...source,changedStart:changed.start,changedEnd:changed.end,context,coveredLines,reverificationIds});
     }
     let stable=watcher.revision===revision;
     for(const file of files){const read=await readSource(watcher.root,file.file);if(!read.ok||read.source.hash!==file.hash)stable=false;}

@@ -42,14 +42,14 @@ export function createCodexDiagnostics(){
 // Never emit CLI payloads: they can contain task text or local tool output.
 // Controlled fixture generation inherits the installed model. Only its effort
 // is overridden per test; global configuration and the product reviewer stay unchanged.
-export function runCodex(workspace,prompt,{timeout=90000}={}){
+export function runCodex(workspace,prompt,{timeout=90000,wrapper=resolve('scripts/start-codex.cjs')}={}){
  let child;
  const promise=new Promise((yes,no)=>{
   const diagnostic=createCodexDiagnostics();
-  child=spawn(process.execPath,[resolve('scripts/start-codex.cjs'),'exec','--json','--skip-git-repo-check','--ephemeral','--sandbox','workspace-write','-c','approval_policy="never"','-c','model_reasoning_effort="medium"','-C',workspace,prompt],{windowsHide:true,shell:false,stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,[wrapper,'exec','--json','--skip-git-repo-check','--ephemeral','--sandbox','workspace-write','-c','approval_policy="never"','-c','model_reasoning_effort="medium"','-C',workspace,prompt],{windowsHide:true,shell:false,stdio:['ignore','pipe','pipe']});
   let finished=false;
   child.stdout.on('data',chunk=>{if(!finished)diagnostic.stdout(chunk);});child.stderr.on('data',chunk=>{if(!finished)diagnostic.stderr(chunk);});
-  const finish=(error)=>{if(finished)return;finished=true;clearTimeout(timer);diagnostic.clear();error?no(error):yes();};
+  const finish=(error)=>{if(finished)return;finished=true;clearTimeout(timer);const summary=diagnostic.summary();diagnostic.clear();error?no(error):yes({summary});};
   const timer=setTimeout(()=>{
    // Kill the known test process tree, not unrelated user Codex sessions.
    if(process.platform==='win32'&&child.pid){const cleanup=spawn('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,shell:false,stdio:'ignore'});cleanup.once('error',()=>{});}

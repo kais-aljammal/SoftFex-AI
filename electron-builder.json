@@ -1,0 +1,15 @@
+{
+  "appId": "ai.softfex.desktop",
+  "productName": "SoftFex AI",
+  "asar": true,
+  "npmRebuild": false,
+  "directories": { "output": "release" },
+  "files": [
+    "dist/main/index.cjs", "dist/preload/index.cjs", "dist/renderer/**/*",
+    "package.json", "!**/*.map", "!**/.env*", "!**/credentials.env", "!**/.softfex-local/**",
+    "!**/artifacts/**", "!**/tests/**", "!**/src/**", "!**/scripts/**"
+  ],
+  "extraResources": [{ "from": "scripts", "to": "helpers", "filter": ["start-codex.cjs", "softfex-notify.cjs", "configure-key.ps1", "launch-key-setup.ps1"] }],
+  "win": { "target": [{ "target": "portable", "arch": ["x64"] }], "signAndEditExecutable": false, "artifactName": "SoftFex-AI-${version}-windows-x64.exe" },
+  "portable": { "requestExecutionLevel": "user" }
+}

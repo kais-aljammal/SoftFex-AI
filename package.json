@@ -8,6 +8,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "build": "npm run check && node scripts/build.mjs",
+    "package:windows": "npm run build && electron-builder --config electron-builder.json --win portable --x64",
     "start": "electron .",
     "dev": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
@@ -31,6 +32,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "electron": "44.7.0",
+    "electron-builder": "26.0.12",
     "esbuild": "0.28.2",
     "playwright": "1.64.0",
     "tsx": "4.23.15",

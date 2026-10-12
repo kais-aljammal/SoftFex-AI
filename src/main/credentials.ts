@@ -2,15 +2,19 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 export const REVIEW_MODEL = 'claude-sonnet-5-5';
+let userCredentialDirectory:string|undefined;
+let packagedCredentials=false;
+export function configureCredentialStorage(directory:string,packaged:boolean){userCredentialDirectory=directory;packagedCredentials=packaged;}
 export function readApiKey(projectRoot:string){return readCredential(projectRoot,'ANTHROPIC_API_KEY');}
 // Imported only by Electron main. Never return this value through IPC.
 export function readCredential(projectRoot: string,name:'ANTHROPIC_API_KEY'|'DEEPGRAM_API_KEY'): string | undefined {
   if (process.env[name]?.trim()) return process.env[name]!.trim();
-  try {
-    const match = readFileSync(join(projectRoot, '.env'), 'utf8').match(new RegExp(`^${name}=([^\\r\\n]*)`,'m'));
+  for(const file of [...(userCredentialDirectory?[join(userCredentialDirectory,'credentials.env')]:[]),...(!packagedCredentials?[join(projectRoot,'.env')]:[])])try {
+    const match = readFileSync(file, 'utf8').match(new RegExp(`^${name}=([^\\r\\n]*)`,'m'));
     const value = match?.[1].trim().replace(/^(["'])(.*)\1$/, '$2');
-    return value || undefined;
-  } catch { return undefined; }
+    if(value)return value;
+  } catch { /* Missing credentials remain recoverable through local setup. */ }
+  return undefined;
 }
 export function createClient(key: string) { return new Anthropic({ apiKey: key, maxRetries: 0, timeout: 30_000 }); }
 export function apiFailure(error: unknown): string {

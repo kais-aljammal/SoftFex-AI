@@ -11,7 +11,7 @@ export type ReviewReport = {
   startedAt: number; finishedAt?: number; status: 'complete' | 'partial' | 'outdated' | 'failed';
   changedFiles: number; reviewedFiles: string[]; skippedFiles: string[];
   localChecksPassed: boolean; aiStatus: 'completed' | 'failed' | 'not_configured' | 'skipped';
-  findings: Finding[]; previousFindings: { finding: Finding; status: 'resolved_in_latest_snapshot' | 'not_reverified' }[];
+  findings: Finding[]; previousFindings: { finding: Finding; status: 'resolved_in_latest_snapshot' | 'not_reverified'; reason?:string }[];
   note?: string; mode: 'changed' | 'current_snapshot';
 };
 export type AppState = {
@@ -26,6 +26,7 @@ export type SpeechResult={text:string;provider:'deepgram'|'browser';bytes?:Uint8
 export type Result<T = void> = { ok: true; value: T } | { ok: false; error: string };
 export interface SoftFexAPI {
   getState(): Promise<AppState>;
+  configureCredential(provider:'anthropic'|'deepgram'):Promise<Result>;
   onStateChange(callback: (state: AppState) => void): () => void;
   setWindowMode(mode: WindowMode): Promise<Result>;
   selectWorkspace(): Promise<Result>;

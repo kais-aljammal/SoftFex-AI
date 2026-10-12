@@ -19,7 +19,7 @@ test('multiline AI evidence is not reverified when only its first line is suppli
  const previous={findings:[finding],previousFindings:[]} as unknown as ReviewReport;
  const partial={...file,coveredLines:new Set([1])};
  assert.equal(previousStatuses(previous,[],[partial],true)[0].status,'not_reverified');
- assert.equal(previousStatuses(previous,[],[file],true)[0].status,'resolved_in_latest_snapshot');
+ assert.equal(previousStatuses(previous,[],[file],true)[0].status,'not_reverified','Even full source without an explicit AI assessment cannot resolve an AI issue.');
 });
 test('context-only paths, blank evidence and unexpected envelope fields are rejected',()=>{
  const file=source('db.query(`SELECT ${req.params.id}`);');const {id,origin,ruleId,snapshotHash,...candidate}=scanRules([file])[0];
@@ -34,13 +34,15 @@ test('unchanged AI evidence beside an unrelated changed line remains not reverif
  const finding={id:'old-mean',origin:'ai',category:'correctness',file:file.file,startLine:3,endLine:3,evidence:'return total / (values.length - 1);'} as const;
  const previous={findings:[finding],previousFindings:[]} as unknown as ReviewReport;
  assert.equal(previousStatuses(previous,[],[file],true)[0].status,'not_reverified');
- const corrected={...source(content.replace('values.length - 1','values.length')),changedStart:3,changedEnd:3};
- assert.equal(previousStatuses(previous,[],[corrected],true)[0].status,'resolved_in_latest_snapshot');
+ const corrected={...source(content.replace('values.length - 1','values.length')),changedStart:3,changedEnd:3,reverificationIds:[finding.id]};
+ assert.equal(previousStatuses(previous,[],[corrected],true)[0].status,'not_reverified');
+ assert.equal(previousStatuses(previous,[],[corrected],true,[{findingId:finding.id,status:'no_longer_detected',startLine:3,endLine:3,evidence:'return total / (values.length);',explanation:'The corrected denominator uses the number of elements.'}])[0].status,'resolved_in_latest_snapshot');
 });
 test('overlapping current AI evidence with a different fingerprint never simultaneously resolves the prior finding',()=>{
  const file=source('export const ratio = total / (count - 1);');
  const old={id:'old-full-expression',origin:'ai',category:'correctness',file:file.file,startLine:1,endLine:1,evidence:file.content};
  const current={...old,id:'new-short-expression',evidence:'total / (count - 1)'};
  const previous={findings:[old],previousFindings:[]} as unknown as ReviewReport;
- assert.deepEqual(previousStatuses(previous,[current as Parameters<typeof previousStatuses>[1][number]],[file],true),[]);
+ const history=previousStatuses(previous,[current as Parameters<typeof previousStatuses>[1][number]],[file],true);
+ assert.equal(history.length,1);assert.equal(history[0].status,'not_reverified','Overlap alone cannot discard or resolve a previous issue.');
 });

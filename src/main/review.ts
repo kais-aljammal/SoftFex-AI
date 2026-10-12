@@ -4,7 +4,7 @@ import {WorkspaceWatcher,readSource} from './watcher';
 import {captureSnapshot} from './snapshot';
 import {scanRules} from './rules';
 import {reviewAI,redactSource} from './llm';
-import {dedupeFindings,previousStatuses} from './findings';
+import {dedupeFindings,previousStatuses,type Reverification} from './findings';
 import {gatherReviewContext,type ReviewContextFile} from './review-context';
 type Trigger=ReviewReport['trigger'];
 export class ReviewCoordinator {
@@ -32,17 +32,19 @@ export class ReviewCoordinator {
           this.publish();return;
         }
       }
-      const snapshot=await captureSnapshot(this.watcher,this.controller.signal);
+      const prior=[...(previous?.findings??[]),...(previous?.previousFindings??[]).filter(p=>p.status==='not_reverified').map(p=>p.finding)];
+      const snapshot=await captureSnapshot(this.watcher,this.controller.signal,prior);
       if(this.closed)return;
-      const prior=[...(previous?.findings??[]),...(previous?.previousFindings??[]).map(p=>p.finding)];
       const local=scanRules(snapshot.files,prior);const key=this.key();
       let aiStatus:ReviewReport['aiStatus']=!key?'not_configured':'skipped';let aiFindings:ReviewReport['findings']=[];let note:string|undefined;
       let relatedFiles:ReviewContextFile[]=[];
+      let assessments:Reverification[]=[];
       if(this.state.aiEnabled&&key&&snapshot.files.length){
         deadline=setTimeout(()=>this.controller?.abort(),90_000);
         try{
           relatedFiles=await gatherReviewContext(this.watcher.root,snapshot.files,await this.watcher.listFiles(),this.controller.signal);
-          const ai=await reviewAI(key,snapshot.files,local,this.controller.signal,{relatedFiles,taskContext,sanitize:this.sanitize});
+          const ai=await reviewAI(key,snapshot.files,local,this.controller.signal,{relatedFiles,taskContext,previousFindings:prior,sanitize:this.sanitize});
+          assessments=ai.assessments;
           aiStatus=ai.ok?'completed':'failed';aiFindings=ai.findings;note=ai.note;
           if(relatedFiles.length)note=[note,'Related context is bounded and excluded from reviewed-file coverage.'].filter(Boolean).join(' ');
         }catch{
@@ -57,7 +59,7 @@ export class ReviewCoordinator {
       for(const file of [...snapshot.files,...relatedFiles]){const now=await readSource(this.watcher.root,file.file);if(!now.ok||now.source.hash!==file.hash)outdated=true;}
       const findings=dedupeFindings([...local,...aiFindings]);
       const partial=!!snapshot.skippedFiles.length||snapshot.overflow||aiStatus==='failed'||snapshot.files.length===0;
-      const report:ReviewReport={reviewId:randomUUID(),workspace:this.watcher.root,trigger,revision:snapshot.revision,startedAt,finishedAt:Date.now(),status:outdated?'outdated':partial?'partial':'complete',changedFiles:snapshot.changedFiles,reviewedFiles:snapshot.files.map(f=>f.file),skippedFiles:snapshot.skippedFiles,localChecksPassed:true,aiStatus,findings,previousFindings:previousStatuses(previous,findings,outdated||aiStatus==='failed'?[]:snapshot.files,aiStatus==='completed'),note,mode:snapshot.mode};
+      const report:ReviewReport={reviewId:randomUUID(),workspace:this.watcher.root,trigger,revision:snapshot.revision,startedAt,finishedAt:Date.now(),status:outdated?'outdated':partial?'partial':'complete',changedFiles:snapshot.changedFiles,reviewedFiles:snapshot.files.map(f=>f.file),skippedFiles:snapshot.skippedFiles,localChecksPassed:true,aiStatus,findings,previousFindings:previousStatuses(previous,findings,outdated||aiStatus==='failed'?[]:snapshot.files,aiStatus==='completed',assessments),note,mode:snapshot.mode};
       if(!outdated&&aiStatus!=='failed')await this.watcher.checkpoint(snapshot.files);
       if(this.closed)return;
       // Recheck content too: the watcher may not have emitted a just-written file yet.

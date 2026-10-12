@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { SoftFexAPI, AppState } from '../shared/types';
 const api: SoftFexAPI = {
   getState: () => ipcRenderer.invoke('softfex:getState'),
+  configureCredential: provider => ipcRenderer.invoke('softfex:configureCredential',provider),
   onStateChange: callback => { const listener = (_e: unknown, state: AppState) => callback(state); ipcRenderer.on('softfex:state', listener); return () => ipcRenderer.removeListener('softfex:state', listener); },
   setWindowMode: mode => ipcRenderer.invoke('softfex:setWindowMode', mode),
   selectWorkspace: () => ipcRenderer.invoke('softfex:selectWorkspace'),

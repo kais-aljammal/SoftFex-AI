@@ -47,7 +47,7 @@ try{
  assert.equal(containment(await readFile(join(root,file),'utf8')),false,'Correction rejects sibling traversal.');
  const prior=state.report.previousFindings.find(p=>p.finding.id===finding.id);
  assert.ok(prior,'The original issue must remain represented after correction.');
- assert.ok(['resolved_in_latest_snapshot','not_reverified'].includes(prior.status));
+ assert.equal(prior.status,'resolved_in_latest_snapshot','The corrected bounded scope must be explicitly assessed before resolution.');
  evidence.lifecycle=prior.status;
  evidence.lifecycleMeaning=prior.status==='not_reverified'?'Bounded changed-code context does not establish coverage of removed original AI evidence; uncertainty preserved.':'Issue no longer detected in reviewed code.';
  evidence.result='PASS';evidence.oracle='Pure insideRoot sibling-path check before, after regression and after fix; no outside file read or production effect';
